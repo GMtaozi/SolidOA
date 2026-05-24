@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.solidoa.attendance.mapper.AttendanceMapper">
+
+    <select id="selectLastRecord" resultType="com.solidoa.attendance.entity.Attendance">
+        SELECT * FROM oa_attendance
+        WHERE user_id = #{userId} AND check_date = #{checkDate}
+        ORDER BY check_time DESC LIMIT 1
+    </select>
+
+    <select id="selectPageList" resultType="com.solidoa.attendance.vo.AttendanceVO">
+        SELECT * FROM oa_attendance
+        WHERE user_id = #{userId} AND check_date = #{checkDate}
+        ORDER BY check_time DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <select id="selectCount" resultType="long">
+        SELECT COUNT(*) FROM oa_attendance
+        WHERE user_id = #{userId} AND check_date = #{checkDate}
+    </select>
+
+    <select id="selectByMonth" resultType="com.solidoa.attendance.entity.Attendance">
+        SELECT * FROM oa_attendance
+        WHERE user_id = #{userId} AND DATE_FORMAT(check_date, '%Y-%m') = #{yearMonth}
+        ORDER BY check_time
+    </select>
+
+</mapper>
