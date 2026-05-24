@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.solidoa.collaboration.mapper.MessageMapper">
+
+    <select id="selectPageList" resultType="com.solidoa.collaboration.entity.Message">
+        SELECT * FROM oa_message
+        WHERE receiver_id = #{receiverId}
+        ORDER BY create_time DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <select id="selectCount" resultType="long">
+        SELECT COUNT(*) FROM oa_message WHERE receiver_id = #{receiverId}
+    </select>
+
+    <select id="selectUnreadCount" resultType="long">
+        SELECT COUNT(*) FROM oa_message WHERE receiver_id = #{receiverId} AND is_read = 0
+    </select>
+
+</mapper>
