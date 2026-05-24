@@ -48,6 +48,36 @@ const routes = [
         name: 'AttendanceCheck',
         component: () => import('@/views/attendance/check/index.vue'),
         meta: { title: '考勤打卡', icon: 'Timer' }
+      },
+      {
+        path: 'system/depts',
+        name: 'SystemDepts',
+        component: () => import('@/views/system/dept/index.vue'),
+        meta: { title: '部门管理', icon: 'OfficeBuilding' }
+      },
+      {
+        path: 'system/roles',
+        name: 'SystemRoles',
+        component: () => import('@/views/system/role/index.vue'),
+        meta: { title: '角色权限', icon: 'Key' }
+      },
+      {
+        path: 'collab/contacts',
+        name: 'CollabContacts',
+        component: () => import('@/views/collab/contact/index.vue'),
+        meta: { title: '通讯录', icon: 'Phone' }
+      },
+      {
+        path: 'collab/schedules',
+        name: 'CollabSchedules',
+        component: () => import('@/views/collab/schedule/index.vue'),
+        meta: { title: '日程管理', icon: 'Calendar' }
+      },
+      {
+        path: 'finance/budget',
+        name: 'FinanceBudget',
+        component: () => import('@/views/finance/budget/index.vue'),
+        meta: { title: '预算管理', icon: 'Wallet' }
       }
     ]
   }

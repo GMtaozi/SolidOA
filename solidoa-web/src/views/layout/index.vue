@@ -42,6 +42,31 @@
           <el-icon><Timer /></el-icon>
           <span>考勤打卡</span>
         </el-menu-item>
+
+        <el-menu-item index="/system/depts">
+          <el-icon><OfficeBuilding /></el-icon>
+          <span>部门管理</span>
+        </el-menu-item>
+
+        <el-menu-item index="/system/roles">
+          <el-icon><Key /></el-icon>
+          <span>角色权限</span>
+        </el-menu-item>
+
+        <el-menu-item index="/collab/contacts">
+          <el-icon><Phone /></el-icon>
+          <span>通讯录</span>
+        </el-menu-item>
+
+        <el-menu-item index="/collab/schedules">
+          <el-icon><Calendar /></el-icon>
+          <span>日程管理</span>
+        </el-menu-item>
+
+        <el-menu-item index="/finance/budget">
+          <el-icon><Wallet /></el-icon>
+          <span>预算管理</span>
+        </el-menu-item>
       </el-menu>
     </el-aside>
 
