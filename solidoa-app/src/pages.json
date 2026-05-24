@@ -1,0 +1,72 @@
+{
+  "pages": [
+    {
+      "path": "pages/index/index",
+      "style": {
+        "navigationBarTitleText": "首页"
+      }
+    },
+    {
+      "path": "pages/login/index",
+      "style": {
+        "navigationBarTitleText": "登录"
+      }
+    },
+    {
+      "path": "pages/approval/list",
+      "style": {
+        "navigationBarTitleText": "审批"
+      }
+    },
+    {
+      "path": "pages/attendance/check",
+      "style": {
+        "navigationBarTitleText": "考勤打卡"
+      }
+    },
+    {
+      "path": "pages/message/index",
+      "style": {
+        "navigationBarTitleText": "消息"
+      }
+    }
+  ],
+  "globalStyle": {
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "SolidOA",
+    "navigationBarBackgroundColor": "#F8F8F8",
+    "backgroundColor": "#F8F8F8"
+  },
+  "tabBar": {
+    "color": "#999999",
+    "selectedColor": "#409eff",
+    "borderStyle": "black",
+    "backgroundColor": "#ffffff",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "首页",
+        "iconPath": "static/home.png",
+        "selectedIconPath": "static/home-active.png"
+      },
+      {
+        "pagePath": "pages/approval/list",
+        "text": "审批",
+        "iconPath": "static/approval.png",
+        "selectedIconPath": "static/approval-active.png"
+      },
+      {
+        "pagePath": "pages/attendance/check",
+        "text": "打卡",
+        "iconPath": "static/check.png",
+        "selectedIconPath": "static/check-active.png"
+      },
+      {
+        "pagePath": "pages/message/index",
+        "text": "消息",
+        "iconPath": "static/message.png",
+        "selectedIconPath": "static/message-active.png"
+      }
+    ]
+  }
+}
