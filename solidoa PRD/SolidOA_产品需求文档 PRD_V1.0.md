@@ -96,8 +96,12 @@ SolidOA 是一款面向中小型企业的轻量级办公自动化系统，专注
 | 角色管理 | ✓ | - | - | - | - |
 | 发起请假 | ✓ | ✓ | ✓ | ✓ | ✓ |
 | 审批请假 | ✓ | ✓(本部门) | - | - | ✓ |
-| 费用报销 | ✓ | ✓ | ✓ | ✓ | - |
-| 财务审批 | ✓ | ✓ | - | ✓ | - |
+| 发起报销 | ✓ | ✓ | ✓ | ✓ | - |
+| 审批报销 | ✓ | ✓(本部门) | - | ✓ | - |
+| 发起用印 | ✓ | ✓ | ✓ | ✓ | ✓ |
+| 审批用印 | ✓ | ✓(本部门) | - | - | - |
+| 发起采购 | ✓ | ✓ | ✓ | - | - |
+| 审批采购 | ✓ | ✓(本部门) | - | ✓ | - |
 | 考勤查看 | ✓ | ✓(本部门) | ✓(本人) | - | ✓ |
 | 系统设置 | ✓ | - | - | - | - |
 
@@ -197,6 +201,40 @@ SolidOA 是一款面向中小型企业的轻量级办公自动化系统，专注
 | 我已审批 | 我已处理的审批记录 | P0 |
 | 我发起的 | 我发起的所有申请 | P0 |
 | 审批统计 | 审批数量统计报表 | P1 |
+
+### 3.2.5 用印申请
+
+| 功能 | 描述 | 优先级 |
+|------|------|--------|
+| 新建用印申请 | 填写用印申请（文件名称、用途、份数） | P0 |
+| 用印类型 | 公章、合同章、法人章、部门章 | P0 |
+| 附件上传 | 上传需要用印的文件 | P1 |
+| 审批流程 | 申请人→部门负责人→行政主管（或法务） | P0 |
+| 审批操作 | 同意/拒绝/转交/加签 | P0 |
+| 用印记录 | 记录用印时间、领用人、份数 | P0 |
+| 用印统计 | 按部门、人员统计用印次数 | P2 |
+
+### 3.2.6 采购申请
+
+| 功能 | 描述 | 优先级 |
+|------|------|--------|
+| 新建采购申请 | 填写采购申请（物品名称、数量、预算金额） | P0 |
+| 采购类型 | 办公用品、IT设备、家具、软件/服务、其他 | P0 |
+| 供应商信息 | 可选填供应商名称、价格 | P1 |
+| 审批流程 | 申请人→部门负责人→采购部门→财务审批（超阈值） | P0 |
+| 审批操作 | 同意/拒绝/转交/加签 | P0 |
+| 采购进度 | 可更新采购到货状态 | P1 |
+| 采购统计 | 按部门、类型统计采购金额 | P2 |
+
+### 3.2.7 审批页面清单
+
+| 页面 | 路径 | 说明 |
+|------|------|------|
+| 请假申请 | `/workflow/leave` | 请假申请列表与表单 |
+| 费用报销 | `/workflow/expense` | 报销申请列表与表单 |
+| 用印申请 | `/workflow/stamp` | 用印申请列表与表单 |
+| 采购申请 | `/workflow/purchase` | 采购申请列表与表单 |
+| 审批管理 | `/approval` | 统一审批入口（待我审批、我已审批、我发起的） |
 
 ### 3.3 协作办公模块
 
@@ -511,6 +549,46 @@ CREATE TABLE oa_expense (
     amount DECIMAL(10,2) NOT NULL,
     reason TEXT,
     attachments VARCHAR(500),
+    status VARCHAR(20) DEFAULT 'PENDING',
+    process_instance_id VARCHAR(100),
+    create_time DATETIME,
+    update_time DATETIME
+);
+
+-- 用印申请表
+CREATE TABLE oa_stamp (
+    id VARCHAR(36) PRIMARY KEY,
+    stamp_no VARCHAR(32) NOT NULL UNIQUE,
+    user_id VARCHAR(36) NOT NULL,
+    stamp_type VARCHAR(20) NOT NULL,
+    document_name VARCHAR(200) NOT NULL,
+    document_count INT DEFAULT 1,
+    usage VARCHAR(500),
+    attachments VARCHAR(500),
+    status VARCHAR(20) DEFAULT 'PENDING',
+    process_instance_id VARCHAR(100),
+    stamp_time DATETIME,
+    received_by VARCHAR(50),
+    create_time DATETIME,
+    update_time DATETIME
+);
+
+-- 采购申请表
+CREATE TABLE oa_purchase (
+    id VARCHAR(36) PRIMARY KEY,
+    purchase_no VARCHAR(32) NOT NULL UNIQUE,
+    user_id VARCHAR(36) NOT NULL,
+    dept_id VARCHAR(36),
+    purchase_type VARCHAR(20) NOT NULL,
+    item_name VARCHAR(200) NOT NULL,
+    quantity INT DEFAULT 1,
+    unit VARCHAR(20),
+    budget_amount DECIMAL(10,2),
+    supplier_name VARCHAR(100),
+    supplier_contact VARCHAR(50),
+    reason TEXT,
+    attachments VARCHAR(500),
+    delivery_status VARCHAR(20) DEFAULT 'PENDING',
     status VARCHAR(20) DEFAULT 'PENDING',
     process_instance_id VARCHAR(100),
     create_time DATETIME,
@@ -851,4 +929,5 @@ mysql -u root -p oa_system < /opt/solidoa/sql/init.sql
 
 | 版本 | 日期 | 修改内容 | 作者 |
 |------|------|----------|------|
+| V1.1 | 2026-05-26 | 增加用印申请和采购申请功能 | SolidOA Team |
 | V1.0 | 2026-05-24 | 初始版本 | SolidOA Team |

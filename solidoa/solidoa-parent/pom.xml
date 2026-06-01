@@ -15,9 +15,11 @@
 
     <modules>
         <module>solidoa-common</module>
+        <module>solidoa-gateway</module>
+        <module>solidoa-system</module>
+        <module>solidoa-workflow</module>
+        <module>solidoa-hr</module>
+        <module>solidoa-file</module>
         <module>solidoa-dingtalk</module>
-        <module>solidoa-collaboration</module>
-        <module>solidoa-finance</module>
-        <module>solidoa-attendance</module>
     </modules>
 </project>

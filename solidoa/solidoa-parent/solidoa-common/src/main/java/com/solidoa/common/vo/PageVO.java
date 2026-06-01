@@ -9,4 +9,5 @@ public class PageVO<T> {
     private long total;
     private int pageNum;
     private int pageSize;
+    private int pages;
 }

@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+                  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+                  id="Definitions_2"
+                  targetNamespace="http://bpmn.io/schema/bpmn">
+
+  <bpmn:process id="expenseProcess" name="费用报销流程" isExecutable="true">
+
+    <bpmn:startEvent id="StartEvent_1" name="开始"/>
+
+    <!-- 部门经理审批 -->
+    <bpmn:userTask id="DeptApprove" name="部门经理审批"/>
+
+    <!-- 金额判断网关 -->
+    <bpmn:exclusiveGateway id="Gateway_Amount" name="金额判断"/>
+
+    <!-- 财务审批（金额>=5000需要财务审批） -->
+    <bpmn:userTask id="FinanceApprove" name="财务审批"/>
+
+    <!-- 结果判断网关 -->
+    <bpmn:exclusiveGateway id="Gateway_Result" name="审批结果"/>
+
+    <bpmn:endEvent id="EndEvent_Pass" name="审批通过"/>
+    <bpmn:endEvent id="EndEvent_Reject" name="审批拒绝"/>
+
+    <bpmn:sequenceFlow id="Flow_1" sourceRef="StartEvent_1" targetRef="DeptApprove"/>
+    <bpmn:sequenceFlow id="Flow_2" sourceRef="DeptApprove" targetRef="Gateway_Amount"/>
+
+    <bpmn:sequenceFlow id="Flow_3" name="≥5000" sourceRef="Gateway_Amount" targetRef="FinanceApprove">
+      <bpmn:conditionExpression>${amount >= 5000}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+
+    <bpmn:sequenceFlow id="Flow_4" name="<5000" sourceRef="Gateway_Amount" targetRef="Gateway_Result">
+      <bpmn:conditionExpression>${amount &lt; 5000}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+
+    <bpmn:sequenceFlow id="Flow_5" sourceRef="FinanceApprove" targetRef="Gateway_Result"/>
+
+    <bpmn:sequenceFlow id="Flow_Pass" sourceRef="Gateway_Result" targetRef="EndEvent_Pass">
+      <bpmn:conditionExpression>${approveResult == 'APPROVE'}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+
+    <bpmn:sequenceFlow id="Flow_Reject" sourceRef="Gateway_Result" targetRef="EndEvent_Reject">
+      <bpmn:conditionExpression>${approveResult == 'REJECT'}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+
+    <bpmn:sequenceFlow id="Flow_Reject_1" sourceRef="DeptApprove" targetRef="EndEvent_Reject">
+      <bpmn:conditionExpression>${approveResult == 'REJECT'}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+
+  </bpmn:process>
+
+</bpmn:definitions>

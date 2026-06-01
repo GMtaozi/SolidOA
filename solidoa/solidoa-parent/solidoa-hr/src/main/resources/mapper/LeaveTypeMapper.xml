@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.solidoa.hr.attendance.mapper.LeaveTypeMapper">
+
+    <select id="selectActiveList" resultType="com.solidoa.hr.attendance.vo.LeaveTypeVO">
+        SELECT id, leave_code AS leaveCode, leave_name AS leaveName,
+               default_days AS defaultDays, max_days AS maxDays,
+               requires_proof AS requiresProof, can_transfer AS canTransfer,
+               transfer_max_days AS transferMaxDays, valid_months AS validMonths,
+               deduct_salary AS deductSalary, sort, status
+        FROM oa_leave_type
+        WHERE status = 1
+        ORDER BY sort ASC
+    </select>
+
+</mapper>

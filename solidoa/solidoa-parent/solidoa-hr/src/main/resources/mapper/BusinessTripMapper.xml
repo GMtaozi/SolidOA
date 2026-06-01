@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.solidoa.hr.attendance.mapper.BusinessTripMapper">
+
+    <resultMap id="BaseResultMap" type="com.solidoa.hr.attendance.entity.BusinessTrip">
+        <id column="id" property="id"/>
+        <result column="trip_no" property="tripNo"/>
+        <result column="user_id" property="userId"/>
+        <result column="dept_id" property="deptId"/>
+        <result column="destination" property="destination"/>
+        <result column="trip_type" property="tripType"/>
+        <result column="start_date" property="startDate"/>
+        <result column="end_date" property="endDate"/>
+        <result column="days" property="days"/>
+        <result column="reason" property="reason"/>
+        <result column="budget_amount" property="budgetAmount"/>
+        <result column="budget_remark" property="budgetRemark"/>
+        <result column="attachments" property="attachments"/>
+        <result column="emergency_contact" property="emergencyContact"/>
+        <result column="emergency_phone" property="emergencyPhone"/>
+        <result column="status" property="status"/>
+        <result column="process_instance_id" property="processInstanceId"/>
+        <result column="current_approver_id" property="currentApproverId"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <select id="selectPageList" resultType="com.solidoa.hr.attendance.vo.BusinessTripVO">
+        SELECT bt.id, bt.trip_no, bt.user_id,
+               bt.dept_id, bt.destination,
+               bt.trip_type, bt.start_date, bt.end_date, bt.days, bt.reason,
+               bt.budget_amount, bt.budget_remark, bt.attachments,
+               bt.emergency_contact, bt.emergency_phone,
+               bt.status, bt.process_instance_id,
+               bt.current_approver_id, bt.create_time,
+               CASE bt.trip_type
+                   WHEN 'DOMESTIC' THEN '国内出差'
+                   WHEN 'OVERSEAS' THEN '海外出差'
+                   WHEN 'LOCAL' THEN '本地出差'
+                   WHEN 'SHORT' THEN '短途出差'
+                   WHEN 'LONG' THEN '长途出差'
+                   ELSE bt.trip_type
+               END as tripTypeName,
+               CASE bt.status
+                   WHEN 'PENDING' THEN '待审批'
+                   WHEN 'APPROVED' THEN '已通过'
+                   WHEN 'REJECTED' THEN '已拒绝'
+                   WHEN 'CANCELLED' THEN '已撤回'
+                   ELSE bt.status
+               END as statusName
+        FROM oa_business_trip bt
+        <where>
+            <if test="userId != null">
+                AND bt.user_id = #{userId}
+            </if>
+            <if test="status != null and status != ''">
+                AND bt.status = #{status}
+            </if>
+            <if test="startDate != null">
+                AND bt.start_date &gt;= #{startDate}
+            </if>
+            <if test="endDate != null">
+                AND bt.end_date &lt;= #{endDate}
+            </if>
+        </where>
+        ORDER BY bt.create_time DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <select id="selectCount" resultType="long">
+        SELECT COUNT(*)
+        FROM oa_business_trip bt
+        <where>
+            <if test="userId != null">
+                AND bt.user_id = #{userId}
+            </if>
+            <if test="status != null and status != ''">
+                AND bt.status = #{status}
+            </if>
+            <if test="startDate != null">
+                AND bt.start_date &gt;= #{startDate}
+            </if>
+            <if test="endDate != null">
+                AND bt.end_date &lt;= #{endDate}
+            </if>
+        </where>
+    </select>
+
+    <select id="selectDetailById" resultType="com.solidoa.hr.attendance.vo.BusinessTripVO">
+        SELECT bt.id, bt.trip_no, bt.user_id,
+               bt.dept_id, bt.destination,
+               bt.trip_type, bt.start_date, bt.end_date, bt.days, bt.reason,
+               bt.budget_amount, bt.budget_remark, bt.attachments,
+               bt.emergency_contact, bt.emergency_phone,
+               bt.status, bt.process_instance_id,
+               bt.current_approver_id, bt.create_time,
+               CASE bt.trip_type
+                   WHEN 'DOMESTIC' THEN '国内出差'
+                   WHEN 'OVERSEAS' THEN '海外出差'
+                   WHEN 'LOCAL' THEN '本地出差'
+                   WHEN 'SHORT' THEN '短途出差'
+                   WHEN 'LONG' THEN '长途出差'
+                   ELSE bt.trip_type
+               END as tripTypeName,
+               CASE bt.status
+                   WHEN 'PENDING' THEN '待审批'
+                   WHEN 'APPROVED' THEN '已通过'
+                   WHEN 'REJECTED' THEN '已拒绝'
+                   WHEN 'CANCELLED' THEN '已撤回'
+                   ELSE bt.status
+               END as statusName
+        FROM oa_business_trip bt
+        WHERE bt.id = #{id}
+    </select>
+
+    <!-- 查询用户已通过的出差申请（用于报销关联） -->
+    <select id="selectApprovedByUserId" resultType="com.solidoa.hr.attendance.vo.BusinessTripVO">
+        SELECT
+            bt.id,
+            bt.trip_no AS tripNo,
+            bt.user_id AS userId,
+            bt.destination,
+            bt.trip_type AS tripType,
+            bt.start_date AS startDate,
+            bt.end_date AS endDate,
+            bt.days,
+            bt.reason,
+            bt.status,
+            bt.create_time AS createTime
+        FROM oa_business_trip bt
+        WHERE bt.user_id = #{userId}
+        AND bt.status = 'APPROVED'
+        ORDER BY bt.create_time DESC
+    </select>
+
+</mapper>

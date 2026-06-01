@@ -1,0 +1,274 @@
+{
+  "info": {
+    "name": "SolidOA API Collection",
+    "description": "SolidOA 微服务系统 API 测试集合",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "token",
+      "value": ""
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "认证",
+      "item": [
+        {
+          "name": "登录",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.code === 200 && jsonData.data && jsonData.data.token) {",
+                  "    pm.collectionVariables.set('token', jsonData.data.token);",
+                  "    pm.test('登录成功', function() {",
+                  "        pm.expect(jsonData.code).to.eql(200);",
+                  "    });",
+                  "} else {",
+                  "    pm.test('登录失败', function() {",
+                  "        pm.expect(jsonData.code).to.not.eql(200);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"username\": \"admin\",\n    \"password\": \"admin123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/system/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "system", "auth", "login"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "用户管理",
+      "item": [
+        {
+          "name": "用户列表",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/system/users?pageNum=1&pageSize=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "system", "users"],
+              "query": [
+                {"key": "pageNum", "value": "1"},
+                {"key": "pageSize", "value": "10"}
+              ]
+            }
+          }
+        },
+        {
+          "name": "用户详情",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/system/users/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "system", "users", "1"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "考勤",
+      "item": [
+        {
+          "name": "打卡",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"type\": \"CLOCK_IN\",\n    \"location\": {\n        \"latitude\": 39.9042,\n        \"longitude\": 116.4074\n    }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/attendance/clock",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "attendance", "clock"]
+            }
+          }
+        },
+        {
+          "name": "考勤记录",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/attendance/records?date=2026-05-25",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "attendance", "records"],
+              "query": [
+                {"key": "date", "value": "2026-05-25"}
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "审批流程",
+      "item": [
+        {
+          "name": "请假申请",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"type\": \"ANNUAL_LEAVE\",\n    \"startDate\": \"2026-05-26\",\n    \"endDate\": \"2026-05-28\",\n    \"reason\": \"测试请假申请\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/workflow/leave",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "workflow", "leave"]
+            }
+          }
+        },
+        {
+          "name": "我的申请",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/workflow/leave/my",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "workflow", "leave", "my"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "财务",
+      "item": [
+        {
+          "name": "报销申请",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"type\": \"TRAVEL\",\n    \"amount\": 1000.00,\n    \"reason\": \"测试报销\",\n    \"details\": [\n        {\"description\": \"交通费\", \"amount\": 500},\n        {\"description\": \"餐饮费\", \"amount\": 500}\n    ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/finance/expense",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "finance", "expense"]
+            }
+          }
+        },
+        {
+          "name": "我的报销",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/finance/expense/my",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "finance", "expense", "my"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "消息中心",
+      "item": [
+        {
+          "name": "消息列表",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/collaboration/messages?pageNum=1&pageSize=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "collaboration", "messages"],
+              "query": [
+                {"key": "pageNum", "value": "1"},
+                {"key": "pageSize", "value": "10"}
+              ]
+            }
+          }
+        },
+        {
+          "name": "未读消息数",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/collaboration/messages/unread/count",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "collaboration", "messages", "unread", "count"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "文件服务",
+      "item": [
+        {
+          "name": "上传文件",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {"key": "file", "type": "file", "src": ""},
+                {"key": "category", "value": "general", "type": "text"}
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/file/upload",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "file", "upload"]
+            }
+          }
+        },
+        {
+          "name": "文件列表",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/file/list",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "file", "list"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -10,6 +10,7 @@ public class Result<T> {
     private int code;
     private String message;
     private T data;
+    private boolean hasData;  // 标记data字段是否有值
     private long timestamp;
 
     public static <T> Result<T> success() {
@@ -21,6 +22,7 @@ public class Result<T> {
         result.setCode(200);
         result.setMessage("success");
         result.setData(data);
+        result.setHasData(data != null);
         result.setTimestamp(Instant.now().toEpochMilli());
         return result;
     }

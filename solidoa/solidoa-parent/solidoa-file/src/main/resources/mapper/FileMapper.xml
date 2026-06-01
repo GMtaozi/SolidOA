@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.solidoa.file.mapper.FileMapper">
+
+    <select id="selectByBusiness" resultType="com.solidoa.file.entity.File">
+        SELECT * FROM oa_file
+        WHERE business_type = #{businessType} AND business_id = #{businessId}
+        ORDER BY create_time DESC
+    </select>
+
+    <select id="selectByBusinessPage" resultType="com.solidoa.file.entity.File">
+        SELECT * FROM oa_file
+        WHERE business_type = #{businessType} AND business_id = #{businessId}
+        ORDER BY create_time DESC
+    </select>
+
+    <select id="countByBusiness" resultType="java.lang.Long">
+        SELECT COUNT(*) FROM oa_file
+        WHERE business_type = #{businessType} AND business_id = #{businessId}
+    </select>
+
+</mapper>

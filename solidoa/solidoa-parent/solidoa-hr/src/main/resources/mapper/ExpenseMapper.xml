@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.solidoa.hr.finance.mapper.ExpenseMapper">
+
+    <select id="selectById" resultType="com.solidoa.hr.finance.vo.ExpenseVO">
+        SELECT * FROM oa_expense WHERE id = #{id}
+    </select>
+
+    <select id="selectPageList" resultType="com.solidoa.hr.finance.vo.ExpenseVO">
+        SELECT * FROM oa_expense WHERE 1=1
+        <if test="userId != null">
+            AND user_id = #{userId}
+        </if>
+        <if test="status != null and status != ''">
+            AND status = #{status}
+        </if>
+        ORDER BY create_time DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <select id="selectCount" resultType="long">
+        SELECT COUNT(*) FROM oa_expense WHERE 1=1
+        <if test="userId != null">
+            AND user_id = #{userId}
+        </if>
+        <if test="status != null and status != ''">
+            AND status = #{status}
+        </if>
+    </select>
+
+    <select id="selectStatistics" resultType="com.solidoa.hr.finance.vo.ExpenseVO">
+        SELECT * FROM oa_expense
+        WHERE status = 'COMPLETED'
+        AND DATE(create_time) BETWEEN #{startDate} AND #{endDate}
+    </select>
+
+    <select id="selectBudgetForUpdate" resultType="com.solidoa.hr.finance.entity.Budget">
+        SELECT * FROM oa_budget
+        WHERE dept_id = #{deptId} AND year = #{year} AND month = #{month}
+        FOR UPDATE
+    </select>
+
+    <select id="selectExportPage" resultType="com.solidoa.hr.finance.vo.ExpenseVO">
+        SELECT expense_no, user_id, dept_id, expense_type, amount, status, create_time
+        FROM oa_expense
+        <where>
+            <if test="year != null">
+                AND YEAR(create_time) = #{year}
+            </if>
+            <if test="month != null">
+                AND MONTH(create_time) = #{month}
+            </if>
+        </where>
+        ORDER BY create_time DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <select id="selectExportCount" resultType="long">
+        SELECT COUNT(*) FROM oa_expense
+        <where>
+            <if test="year != null">
+                AND YEAR(create_time) = #{year}
+            </if>
+            <if test="month != null">
+                AND MONTH(create_time) = #{month}
+            </if>
+        </where>
+    </select>
+
+</mapper>

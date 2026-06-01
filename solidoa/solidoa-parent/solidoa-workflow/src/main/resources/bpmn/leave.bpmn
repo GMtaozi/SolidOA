@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+                  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+                  xmlns:di="http://www.omg.org/spec/BPMN/20100524/DI"
+                  id="Definitions_1"
+                  targetNamespace="http://bpmn.io/schema/bpmn">
+
+  <bpmn:process id="leaveProcess" name="请假审批流程" isExecutable="true">
+
+    <!-- 开始事件 -->
+    <bpmn:startEvent id="StartEvent_1" name="开始"/>
+
+    <!-- 直属审批任务 -->
+    <bpmn:userTask id="ManagerApprove" name="部门经理审批">
+      <bpmn:documentation>部门经理审批请假申请</bpmn:documentation>
+      <bpmn:extensionElements>
+        <camunda:formData>
+          <camunda:formField id="comment" label="审批意见" type="string"/>
+        </camunda:formData>
+      </bpmn:extensionElements>
+    </bpmn:userTask>
+
+    <!-- 二级审批判断网关 -->
+    <bpmn:exclusiveGateway id="Gateway_Days" name="请假天数判断"/>
+
+    <!-- 二级审批任务 -->
+    <bpmn:userTask id="SeniorApprove" name="二级审批">
+      <bpmn:documentation>高管审批（请假天数>=3天）</bpmn:documentation>
+    </bpmn:userTask>
+
+    <!-- 审批结果判断网关 -->
+    <bpmn:exclusiveGateway id="Gateway_Result" name="审批结果"/>
+
+    <!-- 结束事件 - 通过 -->
+    <bpmn:endEvent id="EndEvent_Pass" name="审批通过"/>
+
+    <!-- 结束事件 - 拒绝 -->
+    <bpmn:endEvent id="EndEvent_Reject" name="审批拒绝"/>
+
+    <!-- 结束事件 - 撤回 -->
+    <bpmn:endEvent id="EndEvent_Cancel" name="已撤回"/>
+
+    <!-- 流程连线 -->
+    <bpmn:sequenceFlow id="Flow_1" sourceRef="StartEvent_1" targetRef="ManagerApprove"/>
+
+    <bpmn:sequenceFlow id="Flow_2" sourceRef="ManagerApprove" targetRef="Gateway_Days"/>
+
+    <!-- 大于等于3天走二级审批 -->
+    <bpmn:sequenceFlow id="Flow_3_Plus" name="≥3天" sourceRef="Gateway_Days" targetRef="SeniorApprove">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">${days >= 3}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+
+    <!-- 小于3天直接通过 -->
+    <bpmn:sequenceFlow id="Flow_3_Minus" name="<3天" sourceRef="Gateway_Days" targetRef="Gateway_Result">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">${days &lt; 3}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+
+    <!-- 二级审批后到结果判断 -->
+    <bpmn:sequenceFlow id="Flow_4" sourceRef="SeniorApprove" targetRef="Gateway_Result"/>
+
+    <!-- 通过连线 -->
+    <bpmn:sequenceFlow id="Flow_Pass" name="通过" sourceRef="Gateway_Result" targetRef="EndEvent_Pass">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${approveResult == 'APPROVE'}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+
+    <!-- 拒绝连线（经理审批拒绝） -->
+    <bpmn:sequenceFlow id="Flow_Reject_1" sourceRef="ManagerApprove" targetRef="EndEvent_Reject">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${approveResult == 'REJECT'}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+
+    <!-- 拒绝连线（二级审批拒绝） -->
+    <bpmn:sequenceFlow id="Flow_Reject_2" sourceRef="SeniorApprove" targetRef="EndEvent_Reject">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${approveResult == 'REJECT'}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+
+    <!-- 撤回连线 -->
+    <bpmn:sequenceFlow id="Flow_Cancel" name="撤回" sourceRef="Gateway_Result" targetRef="EndEvent_Cancel">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${approveResult == 'CANCEL'}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+
+  </bpmn:process>
+
+</bpmn:definitions>

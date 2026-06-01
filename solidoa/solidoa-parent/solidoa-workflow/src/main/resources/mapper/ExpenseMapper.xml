@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.solidoa.workflow.mapper.ExpenseMapper">
+
+    <select id="selectPageList" resultType="com.solidoa.workflow.vo.ExpenseVO">
+        SELECT * FROM oa_expense
+        WHERE user_id = #{userId}
+        <if test="status != null and status != ''">AND status = #{status}</if>
+        ORDER BY create_time DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <select id="selectCount" resultType="java.lang.Long">
+        SELECT COUNT(*) FROM oa_expense
+        WHERE user_id = #{userId}
+        <if test="status != null and status != ''">AND status = #{status}</if>
+    </select>
+
+    <select id="selectExpenseById" resultType="com.solidoa.workflow.entity.Expense">
+        SELECT * FROM oa_expense WHERE id = #{id}
+    </select>
+
+    <select id="selectMyTaskList" resultType="com.solidoa.workflow.vo.TaskVO">
+        SELECT id as businessId, 'EXPENSE' as businessType, expense_no as businessNo,
+               user_id as applyUserId, expense_type as title, reason as content,
+               status, create_time as applyTime
+        FROM oa_expense
+        WHERE user_id = #{userId}
+        ORDER BY create_time DESC
+    </select>
+
+    <select id="selectPendingTaskList" resultType="com.solidoa.workflow.vo.TaskVO">
+        SELECT id as businessId, 'EXPENSE' as businessType, expense_no as businessNo,
+               user_id as applyUserId, expense_type as title, reason as content,
+               status, create_time as applyTime
+        FROM oa_expense
+        WHERE current_approver_id = #{approverId} AND status = 'PENDING'
+        ORDER BY create_time DESC
+    </select>
+
+    <select id="selectMyTaskListPage" resultType="com.solidoa.workflow.vo.TaskVO">
+        SELECT id as businessId, 'EXPENSE' as businessType, expense_no as businessNo,
+               user_id as applyUserId, expense_type as title, reason as content,
+               status, create_time as applyTime
+        FROM oa_expense
+        WHERE user_id = #{userId}
+        ORDER BY create_time DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <select id="countMyTaskList" resultType="long">
+        SELECT COUNT(*) FROM oa_expense WHERE user_id = #{userId}
+    </select>
+
+    <select id="selectPendingTaskListPage" resultType="com.solidoa.workflow.vo.TaskVO">
+        SELECT id as businessId, 'EXPENSE' as businessType, expense_no as businessNo,
+               user_id as applyUserId, expense_type as title, reason as content,
+               status, create_time as applyTime
+        FROM oa_expense
+        WHERE current_approver_id = #{approverId} AND status = 'PENDING'
+        ORDER BY create_time DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <select id="countPendingTaskList" resultType="long">
+        SELECT COUNT(*) FROM oa_expense WHERE current_approver_id = #{approverId} AND status = 'PENDING'
+    </select>
+
+    <select id="selectMaxExpenseNoByDate" resultType="java.lang.String">
+        SELECT expense_no FROM oa_expense
+        WHERE expense_no LIKE CONCAT(#{prefix}, '%')
+        ORDER BY expense_no DESC
+        LIMIT 1
+    </select>
+
+</mapper>

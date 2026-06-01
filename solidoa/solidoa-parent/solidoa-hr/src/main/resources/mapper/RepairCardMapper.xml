@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.solidoa.hr.attendance.mapper.RepairCardMapper">
+
+    <select id="selectPendingList" resultType="com.solidoa.hr.attendance.entity.RepairCard">
+        SELECT * FROM oa_repair_card
+        WHERE status = 'PENDING'
+        ORDER BY create_time DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <select id="countDuplicateRepair" resultType="int">
+        SELECT COUNT(*) FROM oa_repair_card
+        WHERE user_id = #{userId}
+          AND repair_date = #{repairDate}
+          AND repair_type = #{repairType}
+          AND status != 'REJECTED'
+    </select>
+
+    <!-- 带行锁的重复检查，用于防止并发重复提交 -->
+    <select id="checkAndLockForCreate" resultType="int">
+        SELECT COUNT(*) FROM oa_repair_card
+        WHERE user_id = #{userId}
+          AND repair_date = #{repairDate}
+          AND repair_type = #{repairType}
+          AND status != 'REJECTED'
+        FOR UPDATE
+    </select>
+
+    <select id="countByDateRange" resultType="int">
+        SELECT COUNT(*) FROM oa_repair_card
+        WHERE user_id = #{userId}
+          AND repair_date BETWEEN #{startDate} AND #{endDate}
+          AND status != 'REJECTED'
+    </select>
+
+</mapper>

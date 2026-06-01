@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.solidoa.hr.attendance.mapper.OvertimeMapper">
+
+    <select id="selectPageList" resultType="com.solidoa.hr.attendance.vo.OvertimeVO">
+        SELECT o.id, o.user_id AS userId, o.dept_id AS deptId,
+               o.overtime_type AS overtimeType,
+               CASE o.overtime_type
+                 WHEN 'WORKDAY' THEN '工作日加班'
+                 WHEN 'REST_DAY' THEN '休息日加班'
+                 WHEN 'HOLIDAY' THEN '节假日加班'
+               END AS overtimeTypeName,
+               o.start_time AS startTime, o.end_time AS endTime,
+               o.hours, o.reason, o.status,
+               CASE o.status
+                 WHEN 'PENDING' THEN '待审批'
+                 WHEN 'APPROVED' THEN '已通过'
+                 WHEN 'REJECTED' THEN '已拒绝'
+                 WHEN 'CANCELLED' THEN '已撤回'
+                 WHEN 'COMPLETED' THEN '已完成'
+               END AS statusName,
+               o.compensation_type AS compensationType,
+               CASE o.compensation_type
+                 WHEN 'BREAK' THEN '调休'
+                 WHEN 'SALARY' THEN '加班费'
+               END AS compensationTypeName,
+               o.approver_id AS approverId,
+               o.approved_time AS approvedTime,
+               o.current_approver_id AS currentApproverId,
+               o.create_time AS createTime
+        FROM oa_overtime o
+        <where>
+            <if test="userId != null">
+                AND o.user_id = #{userId}
+            </if>
+            <if test="status != null and status != ''">
+                AND o.status = #{status}
+            </if>
+            <if test="overtimeType != null and overtimeType != ''">
+                AND o.overtime_type = #{overtimeType}
+            </if>
+            <if test="startDate != null">
+                AND o.start_time &gt;= #{startDate}
+            </if>
+            <if test="endDate != null">
+                AND o.end_time &lt;= #{endDate}
+            </if>
+        </where>
+        ORDER BY o.create_time DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <select id="selectCount" resultType="long">
+        SELECT COUNT(*) FROM oa_overtime o
+        <where>
+            <if test="userId != null">
+                AND o.user_id = #{userId}
+            </if>
+            <if test="status != null and status != ''">
+                AND o.status = #{status}
+            </if>
+            <if test="overtimeType != null and overtimeType != ''">
+                AND o.overtime_type = #{overtimeType}
+            </if>
+            <if test="startDate != null">
+                AND o.start_time &gt;= #{startDate}
+            </if>
+            <if test="endDate != null">
+                AND o.end_time &lt;= #{endDate}
+            </if>
+        </where>
+    </select>
+
+    <select id="selectBreakByUserId" resultType="com.solidoa.hr.attendance.entity.OvertimeBreak">
+        SELECT * FROM oa_overtime_break
+        WHERE user_id = #{userId}
+        ORDER BY create_time DESC
+    </select>
+
+    <select id="selectValidBreakByUserId" resultType="com.solidoa.hr.attendance.entity.OvertimeBreak">
+        SELECT * FROM oa_overtime_break
+        WHERE user_id = #{userId}
+        AND expired_time &gt; #{now}
+        ORDER BY create_time DESC
+    </select>
+
+    <select id="selectAvailableBreakHours" resultType="java.math.BigDecimal">
+        SELECT COALESCE(SUM(available_hours), 0)
+        FROM oa_overtime_break
+        WHERE user_id = #{userId}
+        AND expired_time &gt; #{now}
+    </select>
+
+    <select id="selectUsedBreakHours" resultType="java.math.BigDecimal">
+        SELECT COALESCE(SUM(used_hours), 0)
+        FROM oa_overtime_break
+        WHERE user_id = #{userId}
+        AND expired_time > NOW()
+    </select>
+
+</mapper>

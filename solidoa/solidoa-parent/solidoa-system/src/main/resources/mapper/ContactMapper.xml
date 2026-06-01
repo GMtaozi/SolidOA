@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.solidoa.system.mapper.ContactMapper">
+
+    <select id="selectByDeptId" resultType="com.solidoa.system.entity.Contact">
+        SELECT * FROM oa_contact
+        WHERE dept_id = #{deptId} AND status = 1
+        ORDER BY real_name ASC
+    </select>
+
+    <select id="searchByName" resultType="com.solidoa.system.entity.Contact">
+        SELECT * FROM oa_contact
+        WHERE status = 1
+          AND (real_name LIKE CONCAT('%', #{keyword}, '%')
+               OR mobile LIKE CONCAT('%', #{keyword}, '%')
+               OR position LIKE CONCAT('%', #{keyword}, '%'))
+        ORDER BY real_name ASC
+    </select>
+
+</mapper>

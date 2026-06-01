@@ -1,0 +1,18 @@
+import java.io.IOException;
+import jakarta.servlet.Filter;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletRequest;
+import jakarta.servlet.ServletResponse;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
+
+public class Test {
+    public void test() throws IOException, jakarta.servlet.ServletException {
+        Filter f = null;
+        FilterChain c = null;
+        ServletRequest r = null;
+        ServletResponse s = null;
+        f.doFilter(r, s, c);
+    }
+    
+    FilterRegistrationBean<?> create() { return null; }
+}

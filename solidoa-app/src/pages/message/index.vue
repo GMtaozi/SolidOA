@@ -5,7 +5,7 @@
         v-for="item in messageList"
         :key="item.id"
         class="message-item"
-        :class="{ unread: !item.read }"
+        :class="{ unread: isUnread(item) }"
         @click="handleRead(item)"
       >
         <view class="message-icon">
@@ -16,7 +16,7 @@
             <text class="title">{{ item.title }}</text>
             <text class="time">{{ formatTime(item.createTime) }}</text>
           </view>
-          <text class="content">{{ item.content }}</text>
+          <text class="content" v-html="escapeHtml(item.content)"></text>
         </view>
       </view>
     </view>
@@ -53,6 +53,23 @@ const formatTime = (timeStr) => {
   if (diff < 3600000) return `${Math.floor(diff / 60000)}分钟前`
   if (diff < 86400000) return `${Math.floor(diff / 3600000)}小时前`
   return date.toLocaleDateString('zh-CN')
+}
+
+// 判断消息是否未读（兼容多种字段名）
+const isUnread = (item) => {
+  return item.read === false || item.isRead === false || item.unread === true
+}
+
+// HTML转义防止XSS攻击（纯JS实现，兼容uni-app所有环境）
+const escapeHtml = (str) => {
+  if (!str) return ''
+  return str.replace(/[&<>"']/g, (c) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  }[c]))
 }
 
 const loadData = async () => {

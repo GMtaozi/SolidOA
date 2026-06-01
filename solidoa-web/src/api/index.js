@@ -1,44 +1,19 @@
-import axios from 'axios'
-import { ElMessage } from 'element-plus'
-import router from '@/router'
+/**
+ * API 模块导出
+ * 统一导出所有 API 模块
+ */
 
-const service = axios.create({
-  baseURL: '/api',
-  timeout: 10000
-})
+import request from '@/utils/request'
+import { workflowApi } from './workflow'
+import { hrApi } from './hr'
+import { systemApi } from './system'
+import * as fileApi from './file'
 
-// 请求拦截器
-service.interceptors.request.use(
-  config => {
-    const token = localStorage.getItem('access_token')
-    if (token) {
-      config.headers['Authorization'] = 'Bearer ' + token
-    }
-    return config
-  },
-  error => {
-    return Promise.reject(error)
-  }
-)
+// 导出 request 实例供直接使用
+export { request }
 
-// 响应拦截器
-service.interceptors.response.use(
-  response => {
-    const res = response.data
-    if (res.code !== 200) {
-      ElMessage.error(res.message || '请求失败')
-      return Promise.reject(new Error(res.message || '请求失败'))
-    }
-    return res
-  },
-  error => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem('access_token')
-      router.push('/login')
-    }
-    ElMessage.error(error.message || '网络错误')
-    return Promise.reject(error)
-  }
-)
+// 导出所有 API 模块
+export { workflowApi, hrApi, systemApi, fileApi }
 
-export default service
+// 默认导出 request
+export default request

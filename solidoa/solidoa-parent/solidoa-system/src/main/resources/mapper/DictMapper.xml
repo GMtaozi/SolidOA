@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.solidoa.system.mapper.DictMapper">
+
+    <select id="selectByType" resultType="com.solidoa.system.entity.Dict">
+        SELECT * FROM sys_dict
+        WHERE type = #{type} AND status = 1
+        ORDER BY sort ASC
+    </select>
+
+    <select id="selectDistinctTypes" resultType="java.lang.String">
+        SELECT DISTINCT type FROM sys_dict
+        WHERE status = 1
+        ORDER BY type ASC
+    </select>
+
+</mapper>

@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.solidoa.hr.attendance.mapper.BusinessTripSubsidyMapper">
+
+    <resultMap id="BaseResultMap" type="com.solidoa.hr.attendance.entity.BusinessTripSubsidy">
+        <id column="id" property="id"/>
+        <result column="trip_id" property="tripId"/>
+        <result column="subsidy_type" property="subsidyType"/>
+        <result column="amount" property="amount"/>
+        <result column="remark" property="remark"/>
+        <result column="create_time" property="createTime"/>
+    </resultMap>
+
+    <resultMap id="VOResultMap" type="com.solidoa.hr.attendance.vo.SubsidyVO">
+        <id column="id" property="id"/>
+        <result column="trip_id" property="tripId"/>
+        <result column="subsidy_type" property="subsidyType"/>
+        <result column="subsidy_type_name" property="subsidyTypeName"/>
+        <result column="amount" property="amount"/>
+        <result column="remark" property="remark"/>
+        <result column="create_time" property="createTime"/>
+    </resultMap>
+
+    <select id="selectByTripId" resultMap="VOResultMap">
+        SELECT id, trip_id, subsidy_type, amount, remark, create_time,
+               CASE subsidy_type
+                   WHEN 'TRANSPORT' THEN '交通补贴'
+                   WHEN 'ACCOMMODATION' THEN '住宿补贴'
+                   WHEN 'DAILY' THEN '日常补贴'
+                   ELSE subsidy_type
+               END as subsidy_type_name
+        FROM oa_business_trip_subsidy
+        WHERE trip_id = #{tripId}
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- 批量查询补贴（按出差ID列表） -->
+    <select id="selectByTripIds" resultMap="VOResultMap">
+        SELECT id, trip_id, subsidy_type, amount, remark, create_time,
+               CASE subsidy_type
+                   WHEN 'TRANSPORT' THEN '交通补贴'
+                   WHEN 'ACCOMMODATION' THEN '住宿补贴'
+                   WHEN 'DAILY' THEN '日常补贴'
+                   ELSE subsidy_type
+               END as subsidy_type_name
+        FROM oa_business_trip_subsidy
+        WHERE trip_id IN
+        <foreach collection="tripIds" item="tripId" open="(" separator="," close=")">
+            #{tripId}
+        </foreach>
+        ORDER BY create_time DESC
+    </select>
+
+</mapper>

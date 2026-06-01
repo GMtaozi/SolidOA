@@ -10,8 +10,8 @@ public class LeaveDTO {
     private Long userId;
     private String userName;
     private String leaveType;
-    private String startDate;
-    private String endDate;
+    private LocalDateTime startDate;
+    private LocalDateTime endDate;
     private Double days;
     private String reason;
     private String status;

@@ -80,7 +80,13 @@ let timer = null
 
 const formatTime = (timeStr) => {
   if (!timeStr) return ''
-  return new Date(timeStr).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
+  try {
+    const date = new Date(timeStr)
+    if (isNaN(date.getTime())) return timeStr
+    return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
+  } catch {
+    return timeStr
+  }
 }
 
 const updateTime = () => {
@@ -97,7 +103,7 @@ const getLocation = () => {
   uni.getLocation({
     type: 'gcj02',
     success: (res) => {
-      location.value = `位置: ${res.latitude.toFixed(4)}, ${res.longitude.toFixed(4)}`
+      location.value = `位置: ${res.latitude.toFixed(2)}, ${res.longitude.toFixed(2)}`
     },
     fail: () => {
       location.value = '办公室'
@@ -113,7 +119,10 @@ const handleCheck = async () => {
       location: location.value
     })
     uni.showToast({ title: checkType.value === 'SIGN_IN' ? '签到成功' : '签退成功', icon: 'success' })
-    checkType.value = checkType.value === 'SIGN_IN' ? 'SIGN_OUT' : 'SIGN_IN'
+    // 签退成功后重置为SIGN_IN，签到成功后保持SIGN_IN直到签退
+    if (checkType.value === 'SIGN_OUT') {
+      checkType.value = 'SIGN_IN'
+    }
     loadTodayRecords()
   } catch (e) {
     console.error('打卡失败', e)
@@ -127,6 +136,15 @@ const loadTodayRecords = async () => {
     const today = new Date().toISOString().split('T')[0]
     const res = await api.getAttendanceRecords({ checkDate: today })
     todayRecords.value = res.data?.records || []
+    // 根据已有记录判断当前应处的打卡状态
+    // 如果有签到记录但没有签退记录，则应签退；否则应签到
+    const hasSignIn = todayRecords.value.some(r => r.checkType === 'SIGN_IN')
+    const hasSignOut = todayRecords.value.some(r => r.checkType === 'SIGN_OUT')
+    if (hasSignIn && !hasSignOut) {
+      checkType.value = 'SIGN_OUT'
+    } else {
+      checkType.value = 'SIGN_IN'
+    }
   } catch (e) {
     console.error('加载记录失败', e)
   }

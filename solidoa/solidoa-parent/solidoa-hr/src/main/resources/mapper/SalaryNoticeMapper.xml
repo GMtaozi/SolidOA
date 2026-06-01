@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.solidoa.hr.finance.mapper.SalaryNoticeMapper">
+
+    <select id="selectBySalaryId" resultType="com.solidoa.hr.finance.entity.SalaryNotice">
+        SELECT * FROM oa_salary_notice
+        WHERE salary_id = #{salaryId}
+        ORDER BY create_time DESC
+    </select>
+
+    <select id="selectPendingList" resultType="com.solidoa.hr.finance.entity.SalaryNotice">
+        SELECT * FROM oa_salary_notice
+        WHERE send_status = 'PENDING'
+        ORDER BY create_time ASC
+    </select>
+
+</mapper>

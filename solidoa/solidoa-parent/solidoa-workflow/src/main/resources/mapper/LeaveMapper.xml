@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.solidoa.workflow.mapper.LeaveMapper">
+
+    <select id="selectLeaveById" resultType="com.solidoa.workflow.entity.Leave">
+        SELECT * FROM oa_leave WHERE id = #{id}
+    </select>
+
+    <select id="selectVOById" resultType="com.solidoa.workflow.vo.LeaveVO">
+        SELECT * FROM oa_leave WHERE id = #{id}
+    </select>
+
+    <select id="selectPageList" resultType="com.solidoa.workflow.vo.LeaveVO">
+        SELECT * FROM oa_leave WHERE 1=1
+        <if test="userId != null">
+            AND user_id = #{userId}
+        </if>
+        <if test="status != null and status != ''">
+            AND status = #{status}
+        </if>
+        ORDER BY create_time DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <select id="selectCount" resultType="long">
+        SELECT COUNT(*) FROM oa_leave
+        WHERE 1=1
+        <if test="userId != null">
+            AND user_id = #{userId}
+        </if>
+        <if test="status != null and status != ''">
+            AND status = #{status}
+        </if>
+    </select>
+
+    <select id="selectMyTaskList" resultType="com.solidoa.workflow.vo.TaskVO">
+        SELECT id as businessId, 'LEAVE' as businessType, leave_no as businessNo,
+               user_id as applyUserId, leave_type as title, reason as content,
+               status, create_time as applyTime
+        FROM oa_leave
+        WHERE user_id = #{userId}
+        ORDER BY create_time DESC
+    </select>
+
+    <select id="selectPendingTaskList" resultType="com.solidoa.workflow.vo.TaskVO">
+        SELECT id as businessId, 'LEAVE' as businessType, leave_no as businessNo,
+               user_id as applyUserId, leave_type as title, reason as content,
+               status, create_time as applyTime
+        FROM oa_leave
+        WHERE current_approver_id = #{approverId} AND status = 'PENDING'
+        ORDER BY create_time DESC
+    </select>
+
+    <select id="selectMyTaskListPage" resultType="com.solidoa.workflow.vo.TaskVO">
+        SELECT id as businessId, 'LEAVE' as businessType, leave_no as businessNo,
+               user_id as applyUserId, leave_type as title, reason as content,
+               status, create_time as applyTime
+        FROM oa_leave
+        WHERE user_id = #{userId}
+        ORDER BY create_time DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <select id="countMyTaskList" resultType="long">
+        SELECT COUNT(*) FROM oa_leave WHERE user_id = #{userId}
+    </select>
+
+    <select id="selectPendingTaskListPage" resultType="com.solidoa.workflow.vo.TaskVO">
+        SELECT id as businessId, 'LEAVE' as businessType, leave_no as businessNo,
+               user_id as applyUserId, leave_type as title, reason as content,
+               status, create_time as applyTime
+        FROM oa_leave
+        WHERE current_approver_id = #{approverId} AND status = 'PENDING'
+        ORDER BY create_time DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <select id="countPendingTaskList" resultType="long">
+        SELECT COUNT(*) FROM oa_leave WHERE current_approver_id = #{approverId} AND status = 'PENDING'
+    </select>
+
+    <select id="selectMaxLeaveNoByDate" resultType="string">
+        SELECT MAX(leave_no) FROM oa_leave WHERE leave_no LIKE CONCAT(#{pattern}, '%')
+    </select>
+
+</mapper>

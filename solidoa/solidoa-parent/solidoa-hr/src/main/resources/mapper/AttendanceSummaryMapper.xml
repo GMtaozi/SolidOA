@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.solidoa.hr.attendance.mapper.AttendanceSummaryMapper">
+
+    <select id="selectByUserAndMonth" resultType="com.solidoa.hr.attendance.entity.AttendanceSummary">
+        SELECT * FROM oa_attendance_summary
+        WHERE user_id = #{userId} AND year_month = #{yearMonth}
+        LIMIT 1
+    </select>
+
+</mapper>

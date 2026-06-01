@@ -9,4 +9,28 @@
         ORDER BY sort
     </select>
 
+    <select id="selectByIdWithLeader" resultType="com.solidoa.system.entity.Department">
+        SELECT d.id, d.name, d.parent_id, d.leader_id, d.sort,
+               u.real_name as leader_name
+        FROM sys_department d
+        LEFT JOIN sys_user u ON d.leader_id = u.id
+        WHERE d.id = #{id} AND d.deleted = 0
+    </select>
+
+    <select id="selectChildIds" resultType="java.lang.Long">
+        SELECT id FROM sys_department
+        WHERE parent_id = #{parentId} AND deleted = 0
+    </select>
+
+    <select id="selectChildDeptIds" resultType="java.lang.Long">
+        WITH RECURSIVE dept_tree AS (
+            SELECT id FROM sys_department WHERE id = #{parentId} AND deleted = 0
+            UNION ALL
+            SELECT d.id FROM sys_department d
+            INNER JOIN dept_tree dt ON d.parent_id = dt.id
+            WHERE d.deleted = 0
+        )
+        SELECT id FROM dept_tree
+    </select>
+
 </mapper>

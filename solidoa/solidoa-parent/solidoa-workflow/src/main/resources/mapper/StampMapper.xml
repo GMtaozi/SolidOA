@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.solidoa.workflow.mapper.StampMapper">
+
+    <!-- 查询最大用印单号（使用 FOR UPDATE 行锁保证并发唯一性） -->
+    <!-- 查询最大用印单号（临时移除 FOR UPDATE 调试） -->
+    <select id="selectMaxStampNoForUpdate" resultType="java.lang.String">
+        SELECT stamp_no FROM oa_stamp WHERE stamp_no LIKE #{prefix} ORDER BY stamp_no DESC LIMIT 1
+    </select>
+
+</mapper>

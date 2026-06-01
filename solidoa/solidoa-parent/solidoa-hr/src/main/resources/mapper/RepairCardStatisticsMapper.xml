@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.solidoa.hr.attendance.mapper.RepairCardStatisticsMapper">
+
+    <select id="selectByUserAndMonth" resultType="com.solidoa.hr.attendance.entity.RepairCardStatistics">
+        SELECT * FROM oa_repair_card_statistics
+        WHERE user_id = #{userId} AND ym = #{yearMonth}
+        LIMIT 1
+    </select>
+
+    <insert id="upsert">
+        INSERT INTO oa_repair_card_statistics (user_id, ym, repair_count)
+        VALUES (#{userId}, #{yearMonth}, #{repairCount})
+        ON DUPLICATE KEY UPDATE repair_count = #{repairCount}
+    </insert>
+
+</mapper>

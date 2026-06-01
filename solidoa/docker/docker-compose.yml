@@ -1,0 +1,237 @@
+version: '3.8'
+
+services:
+  # MySQL
+  mysql:
+    image: mysql:8.0
+    container_name: solidoa-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: 749958714
+      MYSQL_DATABASE: oa_system
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ../sql/init:/docker-entrypoint-initdb.d
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-authentication-plugin=mysql_native_password
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis
+  redis:
+    image: redis:7-alpine
+    container_name: solidoa-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Nacos
+  nacos:
+    image: nacos/nacos-server:v2.2.3
+    container_name: solidoa-nacos
+    restart: unless-stopped
+    environment:
+      MODE: standalone
+    ports:
+      - "8848:8848"
+      - "9848:9848"
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  # RabbitMQ
+  rabbitmq:
+    image: rabbitmq:3.12-management-alpine
+    container_name: solidoa-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+
+  # MinIO
+  minio:
+    image: minio/minio:latest
+    container_name: solidoa-minio
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin123
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+
+  # SolidOA Gateway
+  gateway:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: solidoa-gateway
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: oa_system
+      DB_USER: root
+      DB_PASSWORD: 749958714
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    depends_on:
+      - mysql
+      - redis
+    command: ["java", "-jar", "solidoa/solidoa-parent/solidoa-gateway/target/solidoa-gateway-1.0.0-SNAPSHOT.jar"]
+
+  # SolidOA System Service
+  system-service:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: solidoa-system
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: oa_system
+      DB_USER: root
+      DB_PASSWORD: 749958714
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    depends_on:
+      - mysql
+      - redis
+    command: ["java", "-jar", "solidoa/solidoa-parent/solidoa-system/target/solidoa-system-1.0.0-SNAPSHOT.jar"]
+
+  # SolidOA Workflow Service
+  workflow-service:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: solidoa-workflow
+    restart: unless-stopped
+    ports:
+      - "8082:8082"
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: oa_workflow
+      DB_USER: root
+      DB_PASSWORD: 749958714
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: guest
+      RABBITMQ_PASSWORD: guest
+    depends_on:
+      - mysql
+      - rabbitmq
+    command: ["java", "-jar", "solidoa/solidoa-parent/solidoa-workflow/target/solidoa-workflow-1.0.0-SNAPSHOT.jar"]
+
+  # SolidOA HR Service
+  hr-service:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: solidoa-hr
+    restart: unless-stopped
+    ports:
+      - "8085:8085"
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: oa_hr
+      DB_USER: root
+      DB_PASSWORD: 749958714
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: guest
+      RABBITMQ_PASSWORD: guest
+    depends_on:
+      - mysql
+      - redis
+      - rabbitmq
+    command: ["java", "-jar", "solidoa/solidoa-parent/solidoa-hr/target/solidoa-hr-1.0.0-SNAPSHOT.jar"]
+
+  # SolidOA File Service
+  file-service:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: solidoa-file
+    restart: unless-stopped
+    ports:
+      - "8086:8086"
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: oa_file
+      DB_USER: root
+      DB_PASSWORD: 749958714
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin123
+    depends_on:
+      - mysql
+      - minio
+    command: ["java", "-jar", "solidoa/solidoa-parent/solidoa-file/target/solidoa-file-1.0.0-SNAPSHOT.jar"]
+
+  # SolidOA DingTalk Service
+  dingtalk-service:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: solidoa-dingtalk
+    restart: unless-stopped
+    ports:
+      - "8087:8087"
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: oa_dingtalk
+      DB_USER: root
+      DB_PASSWORD: 749958714
+    depends_on:
+      - mysql
+    command: ["java", "-jar", "solidoa/solidoa-parent/solidoa-dingtalk/target/solidoa-dingtalk-1.0.0-SNAPSHOT.jar"]
+
+volumes:
+  mysql_data:
+  redis_data:
+  rabbitmq_data:
+  minio_data:

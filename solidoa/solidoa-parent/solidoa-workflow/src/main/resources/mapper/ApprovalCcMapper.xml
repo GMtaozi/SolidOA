@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.solidoa.workflow.mapper.ApprovalCcMapper">
+
+    <resultMap id="BaseResultMap" type="com.solidoa.workflow.entity.ApprovalCc">
+        <id column="id" property="id"/>
+        <result column="record_id" property="recordId"/>
+        <result column="cc_user_id" property="ccUserId"/>
+        <result column="cc_user_name" property="ccUserName"/>
+        <result column="notify_status" property="notifyStatus"/>
+        <result column="is_read" property="isRead"/>
+        <result column="read_time" property="readTime"/>
+        <result column="create_time" property="createTime"/>
+    </resultMap>
+
+    <!-- 根据记录ID查询抄送列表 -->
+    <select id="selectByRecordId" resultMap="BaseResultMap">
+        SELECT * FROM oa_approval_cc
+        WHERE record_id = #{recordId}
+        ORDER BY create_time ASC
+    </select>
+
+    <!-- 根据记录ID查询抄送VO列表 -->
+    <select id="selectVOByRecordId" resultType="com.solidoa.workflow.vo.ApprovalCcVO">
+        SELECT ac.id, ac.cc_user_id AS ccUserId, ac.cc_user_name AS ccUserName,
+               CASE WHEN ac.is_read = TRUE THEN 1 ELSE 0 END AS isRead,
+               ac.read_time AS readTime, ac.create_time AS createTime
+        FROM oa_approval_cc ac
+        WHERE ac.record_id = #{recordId}
+        ORDER BY ac.create_time ASC
+    </select>
+
+    <!-- 查询我的抄送列表 -->
+    <select id="selectMyCc" resultType="com.solidoa.workflow.vo.ApprovalCcVO">
+        SELECT ac.id, ac.cc_user_id AS ccUserId, ac.cc_user_name AS ccUserName,
+               CASE WHEN ac.is_read = TRUE THEN 1 ELSE 0 END AS isRead,
+               ac.read_time AS readTime, ac.create_time AS createTime,
+               ar.record_no AS recordNo, ar.business_type AS businessType, ar.title
+        FROM oa_approval_cc ac
+        INNER JOIN oa_approval_record ar ON ac.record_id = ar.id
+        WHERE ac.cc_user_id = #{userId}
+        <if test="isRead != null">AND ac.is_read = #{isRead}</if>
+        ORDER BY ac.create_time DESC
+    </select>
+
+    <!-- 分页查询我的抄送列表 -->
+    <select id="selectMyCcPage" resultType="com.solidoa.workflow.vo.ApprovalCcVO">
+        SELECT ac.id, ac.cc_user_id AS ccUserId, ac.cc_user_name AS ccUserName,
+               CASE WHEN ac.is_read = TRUE THEN 1 ELSE 0 END AS isRead,
+               ac.read_time AS readTime, ac.create_time AS createTime,
+               ar.record_no AS recordNo, ar.business_type AS businessType, ar.title
+        FROM oa_approval_cc ac
+        INNER JOIN oa_approval_record ar ON ac.record_id = ar.id
+        WHERE ac.cc_user_id = #{userId}
+        <if test="isRead != null">AND ac.is_read = #{isRead}</if>
+        ORDER BY ac.create_time DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <!-- 查询我的抄送总数 -->
+    <select id="countMyCc" resultType="int">
+        SELECT COUNT(*)
+        FROM oa_approval_cc ac
+        WHERE ac.cc_user_id = #{userId}
+        <if test="isRead != null">AND ac.is_read = #{isRead}</if>
+    </select>
+
+</mapper>

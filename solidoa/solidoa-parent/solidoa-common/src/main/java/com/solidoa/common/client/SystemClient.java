@@ -1,5 +1,6 @@
 package com.solidoa.common.client;
 
+import com.solidoa.common.config.FeignConfig;
 import com.solidoa.common.result.Result;
 import com.solidoa.common.vo.DeptTreeVO;
 import com.solidoa.common.vo.UserSimpleVO;
@@ -8,7 +9,11 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-@FeignClient(name = "system-service", path = "/api/v1/system")
+@FeignClient(
+    name = "system-service",
+    path = "/api/v1/system",
+    configuration = FeignConfig.class
+)
 public interface SystemClient {
 
     @GetMapping("/user/{id}")

@@ -9,7 +9,6 @@ import java.util.List;
 
 @Mapper
 public interface UserMapper extends BaseMapper<User> {
-
     User selectByUsername(@Param("username") String username);
 
     List<UserVO> selectPageList(@Param("offset") int offset,
@@ -19,4 +18,6 @@ public interface UserMapper extends BaseMapper<User> {
 
     long selectCount(@Param("username") String username,
                      @Param("realName") String realName);
+
+    List<Long> selectUserIdsByDeptIds(@Param("deptIds") List<Long> deptIds);
 }

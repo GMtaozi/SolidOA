@@ -29,9 +29,6 @@
 
       <button class="login-btn" :loading="loading" @click="handleLogin">登 录</button>
 
-      <view class="login-tip">
-        <text>默认账号: admin / admin123</text>
-      </view>
     </view>
   </view>
 </template>
@@ -44,8 +41,8 @@ const userStore = useUserStore()
 const loading = ref(false)
 
 const form = reactive({
-  username: 'admin',
-  password: 'admin123'
+  username: '',
+  password: ''
 })
 
 const handleLogin = async () => {
@@ -67,6 +64,7 @@ const handleLogin = async () => {
     }, 1000)
   } catch (e) {
     console.error('登录失败', e)
+    uni.showToast({ title: e.message || '登录失败，请检查网络连接', icon: 'none' })
   } finally {
     loading.value = false
   }

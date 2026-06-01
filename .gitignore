@@ -4,6 +4,10 @@ target/
 *.war
 *.ear
 
+# Node
+node_modules/
+npm-debug.log*
+
 # IDE
 .idea/
 *.iml
@@ -28,3 +32,30 @@ Thumbs.db
 # Build
 build/
 dist/
+
+# Environment files
+.env
+*.env
+!.env.example
+
+# Sensitive config
+**/application-local.yml
+**/application-prod.yml
+
+# Docker
+docker/.env
+
+# Claude Code
+.claude/
+CONTEXT_STATE.md
+DESIGN.md
+PRODUCT.md
+TestBCrypt.java
+code-review-*.js
+
+# Temp files
+temp/
+表单设计/
+
+# Logo files
+*.png

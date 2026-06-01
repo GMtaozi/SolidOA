@@ -8,16 +8,19 @@
     </select>
 
     <select id="selectPageList" resultType="com.solidoa.system.vo.UserVO">
-        SELECT id, username, real_name, mobile, email, dept_id, status, create_time
-        FROM sys_user
-        WHERE deleted = 0
+        SELECT u.id, u.username, u.real_name, u.mobile, u.email, u.dept_id, u.status, u.create_time,
+               (SELECT GROUP_CONCAT(r.code) FROM sys_user_role ur
+                INNER JOIN sys_role r ON ur.role_id = r.id
+                WHERE ur.user_id = u.id AND r.status = 1) as roles
+        FROM sys_user u
+        WHERE u.deleted = 0
         <if test="username != null and username != ''">
-            AND username LIKE CONCAT('%', #{username}, '%')
+            AND u.username LIKE CONCAT('%', #{username}, '%')
         </if>
         <if test="realName != null and realName != ''">
-            AND real_name LIKE CONCAT('%', #{realName}, '%')
+            AND u.real_name LIKE CONCAT('%', #{realName}, '%')
         </if>
-        ORDER BY create_time DESC
+        ORDER BY u.create_time DESC
         LIMIT #{offset}, #{limit}
     </select>
 
@@ -28,6 +31,16 @@
         </if>
         <if test="realName != null and realName != ''">
             AND real_name LIKE CONCAT('%', #{realName}, '%')
+        </if>
+    </select>
+
+    <select id="selectUserIdsByDeptIds" resultType="java.lang.Long">
+        SELECT id FROM sys_user WHERE deleted = 0
+        <if test="deptIds != null and deptIds.size() > 0">
+            AND dept_id IN
+            <foreach collection="deptIds" item="deptId" open="(" separator="," close=")">
+                #{deptId}
+            </foreach>
         </if>
     </select>
 

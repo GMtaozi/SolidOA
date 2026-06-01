@@ -32,11 +32,11 @@
         </view>
 
         <view class="item-footer">
-          <text class="date">{{ item.startDate }} ~ {{ item.endDate }}</text>
+          <text class="date">{{ item.startDate || '-' }} ~ {{ item.endDate || '-' }}</text>
           <text class="days">{{ item.days }}天</text>
         </view>
 
-        <view v-if="activeTab === 'pending'" class="item-actions">
+        <view v-if="activeTab === 'pending' && item.canApprove" class="item-actions">
           <button class="btn approve" @click.stop="handleApprove(item)">通过</button>
           <button class="btn reject" @click.stop="handleReject(item)">拒绝</button>
         </view>
@@ -52,6 +52,9 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { api } from '@/api/index'
+import { useUserStore } from '@/stores/user'
+
+const userStore = useUserStore()
 
 const activeTab = ref('pending')
 const pendingList = ref([])
@@ -121,8 +124,13 @@ const handleReject = async (item) => {
 
 const loadData = async () => {
   try {
-    const res = await api.getMyTasks()
-    pendingList.value = res.data || []
+    // 并行加载待审批和已处理任务
+    const [pendingRes, processedRes] = await Promise.all([
+      api.getMyTasks(),
+      api.getProcessedTasks()
+    ])
+    pendingList.value = pendingRes.data || []
+    processedList.value = processedRes.data || []
   } catch (e) {
     console.error('加载数据失败', e)
   }

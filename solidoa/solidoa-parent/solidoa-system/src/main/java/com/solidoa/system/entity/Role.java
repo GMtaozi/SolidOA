@@ -13,6 +13,8 @@ public class Role {
     private String code;
     private String description;
     private Integer status;
+    @TableLogic
+    private Integer deleted;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
 }

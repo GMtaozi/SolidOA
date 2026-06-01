@@ -1,0 +1,70 @@
+server:
+  port: 8082
+  servlet:
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
+  shutdown: graceful
+
+spring:
+  application:
+    name: workflow-service
+  main:
+    web-application-type: servlet
+  profiles:
+    active: default
+  cloud:
+    nacos:
+      config:
+        import-check:
+          enabled: false
+  output:
+    ansi:
+      enabled: never
+  charset:
+    encoding: UTF-8
+
+  datasource:
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3307}/${DB_NAME:oa_workflow}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&connectTimeout=10000&socketTimeout=30000
+    username: ${DB_USER:root}
+    password: ${DB_PASSWORD:749958714}
+    hikari:
+      connection-timeout: 30000
+      maximum-pool-size: 10
+      minimum-idle: 5
+
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+
+  aop:
+    auto: false  # 禁用 AOP
+
+mybatis-plus:
+  type-aliases-package: com.solidoa.workflow.entity
+  mapper-locations: classpath*:mapper/**/*.xml
+  configuration:
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+# 网关内部签名密钥
+gateway:
+  internal-secret: ${GATEWAY_INTERNAL_SECRET:solidoa-gw-sign-2026-secure-key}
+
+# Feign 配置
+feign:
+  client:
+    config:
+      default:
+        connectTimeout: 5000
+        readTimeout: 10000
+      hr-service:
+        url: http://localhost:8085
+      system-service:
+        url: http://localhost:8081

@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.solidoa.hr.attendance.mapper.LeaveBalanceMapper">
+
+    <select id="selectByUserId" resultType="com.solidoa.hr.attendance.vo.LeaveBalanceVO">
+        SELECT lb.id, lb.user_id AS userId, lb.leave_type AS leaveType,
+               lb.year,
+               CASE lb.leave_type
+                 WHEN 'ANNUAL' THEN '年假'
+                 WHEN 'SICK' THEN '病假'
+                 WHEN 'PERSONAL' THEN '事假'
+                 WHEN 'MARRIAGE' THEN '婚假'
+                 WHEN 'MATERNITY' THEN '产假'
+                 WHEN 'PATERNITY' THEN '陪产假'
+                 WHEN 'FUNERAL' THEN '丧假'
+                 WHEN 'WORK_INJURY' THEN '工伤假'
+               END AS leaveTypeName,
+               lb.total_days, lb.used_days, lb.pending_days, lb.transferred_days,
+               (lb.total_days - lb.used_days - lb.pending_days) AS availableDays
+        FROM oa_leave_balance lb
+        <where>
+            <if test="userId != null">
+                AND lb.user_id = #{userId}
+            </if>
+            <if test="year != null">
+                AND lb.year = #{year}
+            </if>
+        </where>
+        ORDER BY lb.leave_type
+    </select>
+
+    <select id="selectByUserIdAndType" resultType="com.solidoa.hr.attendance.entity.LeaveBalance">
+        SELECT * FROM oa_leave_balance
+        WHERE user_id = #{userId}
+        AND leave_type = #{leaveType}
+        AND year = #{year}
+    </select>
+
+    <select id="selectWorkYears" resultType="java.lang.Integer">
+        SELECT TIMESTAMPDIFF(YEAR, hire_date, CURDATE()) AS work_years
+        FROM oa_user
+        WHERE id = #{userId}
+    </select>
+
+    <insert id="insertOrUpdateBatch">
+        INSERT INTO oa_leave_balance (user_id, leave_type, year, total_days, used_days, pending_days, transferred_days)
+        VALUES
+        <foreach collection="list" item="item" separator=",">
+            (#{item.userId}, #{item.leaveType}, #{item.year}, #{item.totalDays},
+             COALESCE(#{item.usedDays}, 0), COALESCE(#{item.pendingDays}, 0), COALESCE(#{item.transferredDays}, 0))
+        </foreach>
+        ON DUPLICATE KEY UPDATE
+            total_days = VALUES(total_days),
+            used_days = COALESCE(VALUES(used_days), used_days),
+            pending_days = COALESCE(VALUES(pending_days), pending_days)
+    </insert>
+
+</mapper>

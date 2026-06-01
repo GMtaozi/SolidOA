@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.solidoa.hr.finance.mapper.SalaryMapper">
+
+    <select id="selectVOById" resultType="com.solidoa.hr.finance.vo.SalaryVO">
+        SELECT s.id, s.salary_no AS salaryNo, s.user_id AS userId, s.dept_id AS deptId,
+               s.salary_month AS yearMonth, s.status,
+               s.base_salary AS baseSalary, s.position_salary AS positionSalary,
+               s.performance_salary AS performanceSalary, s.overtime_salary AS overtimeSalary,
+               s.bonus, s.subsidy, s.other_addition AS otherAddition,
+               s.social_insurance AS socialInsurance, s.personal_tax AS personalTax,
+               s.late_fine AS lateFine, s.other_deduction AS otherDeduction,
+               s.gross_salary AS grossSalary, s.net_salary AS netSalary,
+               s.creator_id AS creatorId, s.approver_id AS approverId,
+               s.approve_time AS approveTime, s.approve_comment AS approveComment,
+               s.paid_time AS paidTime, s.create_time AS createTime, s.update_time AS updateTime
+        FROM oa_salary s
+        WHERE s.id = #{id}
+    </select>
+
+    <select id="selectPageList" resultType="com.solidoa.hr.finance.vo.SalaryVO">
+        SELECT s.id, s.salary_no AS salaryNo, s.user_id AS userId, s.dept_id AS deptId,
+               s.salary_month AS yearMonth, s.status,
+               s.base_salary AS baseSalary, s.position_salary AS positionSalary,
+               s.performance_salary AS performanceSalary, s.overtime_salary AS overtimeSalary,
+               s.bonus, s.subsidy, s.other_addition AS otherAddition,
+               s.social_insurance AS socialInsurance, s.personal_tax AS personalTax,
+               s.late_fine AS lateFine, s.other_deduction AS otherDeduction,
+               s.gross_salary AS grossSalary, s.net_salary AS netSalary,
+               s.creator_id AS creatorId, s.create_time AS createTime
+        FROM oa_salary s
+        WHERE 1=1
+        <if test="yearMonth != null and yearMonth != ''">
+            AND s.salary_month = #{yearMonth}
+        </if>
+        <if test="status != null and status != ''">
+            AND s.status = #{status}
+        </if>
+        <if test="deptId != null">
+            AND s.dept_id = #{deptId}
+        </if>
+        ORDER BY s.create_time DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <select id="selectCount" resultType="long">
+        SELECT COUNT(*) FROM oa_salary s
+        WHERE 1=1
+        <if test="yearMonth != null and yearMonth != ''">
+            AND s.salary_month = #{yearMonth}
+        </if>
+        <if test="status != null and status != ''">
+            AND s.status = #{status}
+        </if>
+        <if test="deptId != null">
+            AND s.dept_id = #{deptId}
+        </if>
+    </select>
+
+    <select id="selectByUserId" resultType="com.solidoa.hr.finance.vo.SalaryVO">
+        SELECT s.id, s.salary_no AS salaryNo, s.user_id AS userId, s.dept_id AS deptId,
+               s.salary_month AS yearMonth, s.status,
+               s.base_salary AS baseSalary, s.position_salary AS positionSalary,
+               s.performance_salary AS performanceSalary, s.overtime_salary AS overtimeSalary,
+               s.bonus, s.subsidy, s.other_addition AS otherAddition,
+               s.social_insurance AS socialInsurance, s.personal_tax AS personalTax,
+               s.late_fine AS lateFine, s.other_deduction AS otherDeduction,
+               s.gross_salary AS grossSalary, s.net_salary AS netSalary,
+               s.create_time AS createTime
+        FROM oa_salary s
+        WHERE s.user_id = #{userId}
+        <if test="startMonth != null and startMonth != ''">
+            AND s.salary_month >= #{startMonth}
+        </if>
+        <if test="endMonth != null and endMonth != ''">
+            AND s.salary_month &lt;= #{endMonth}
+        </if>
+        ORDER BY s.salary_month DESC
+    </select>
+
+    <select id="selectExportList" resultType="com.solidoa.hr.finance.vo.SalaryVO">
+        SELECT s.id, s.salary_no AS salaryNo, s.user_id AS userId, s.dept_id AS deptId,
+               s.salary_month AS yearMonth, s.status,
+               s.base_salary AS baseSalary, s.position_salary AS positionSalary,
+               s.performance_salary AS performanceSalary, s.overtime_salary AS overtimeSalary,
+               s.bonus, s.subsidy, s.other_addition AS otherAddition,
+               s.social_insurance AS socialInsurance, s.personal_tax AS personalTax,
+               s.late_fine AS lateFine, s.other_deduction AS otherDeduction,
+               s.gross_salary AS grossSalary, s.net_salary AS netSalary,
+               s.create_time AS createTime
+        FROM oa_salary s
+        WHERE s.salary_month = #{yearMonth}
+        <if test="deptId != null">
+            AND s.dept_id = #{deptId}
+        </if>
+        ORDER BY s.dept_id, s.user_id
+    </select>
+
+    <select id="selectExists" resultType="int">
+        SELECT COUNT(*) FROM oa_salary
+        WHERE user_id = #{userId} AND salary_month = #{yearMonth}
+    </select>
+
+    <!-- 使用 FOR UPDATE 行锁获取当天最大工资单号 -->
+    <select id="selectMaxSalaryNoForUpdate" resultType="string">
+        SELECT salary_no FROM oa_salary
+        WHERE salary_no LIKE #{prefix}
+        ORDER BY salary_no DESC
+        LIMIT 1
+        FOR UPDATE
+    </select>
+
+    <insert id="insertBatchSomeColumn">
+        INSERT INTO oa_salary (salary_no, user_id, dept_id, salary_month, status,
+            base_salary, position_salary, performance_salary, overtime_salary,
+            bonus, subsidy, other_addition,
+            social_insurance, personal_tax, late_fine, other_deduction,
+            gross_salary, net_salary, employee_count,
+            creator_id, approver_id, approve_comment,
+            paid_time, create_time, update_time
+        ) VALUES
+        <foreach collection="list" item="item" separator=",">
+            (#{item.salaryNo}, #{item.userId}, #{item.deptId}, #{item.salaryMonth}, #{item.status},
+             #{item.baseSalary}, #{item.positionSalary}, #{item.performanceSalary}, #{item.overtimeSalary},
+             #{item.bonus}, #{item.subsidy}, #{item.otherAddition},
+             #{item.socialInsurance}, #{item.personalTax}, #{item.lateFine}, #{item.otherDeduction},
+             #{item.totalGrossSalary}, #{item.totalNetSalary}, #{item.employeeCount},
+             #{item.creatorId}, #{item.approverId}, #{item.approveComment},
+             #{item.paidTime}, #{item.createTime}, #{item.updateTime})
+        </foreach>
+    </insert>
+
+</mapper>

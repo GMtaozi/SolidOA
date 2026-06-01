@@ -1,0 +1,227 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.solidoa.workflow.mapper.ApprovalRecordMapper">
+
+    <resultMap id="BaseResultMap" type="com.solidoa.workflow.entity.ApprovalRecord">
+        <id column="id" property="id"/>
+        <result column="record_no" property="recordNo"/>
+        <result column="business_type" property="businessType"/>
+        <result column="business_id" property="businessId"/>
+        <result column="user_id" property="userId"/>
+        <result column="user_name" property="userName"/>
+        <result column="dept_id" property="deptId"/>
+        <result column="dept_name" property="deptName"/>
+        <result column="title" property="title"/>
+        <result column="content" property="content"/>
+        <result column="amount" property="amount"/>
+        <result column="start_date" property="startDate"/>
+        <result column="end_date" property="endDate"/>
+        <result column="status" property="status"/>
+        <result column="approver_id" property="approverId"/>
+        <result column="approve_type" property="approveType"/>
+        <result column="comment" property="comment"/>
+        <result column="current_node" property="currentNode"/>
+        <result column="total_nodes" property="totalNodes"/>
+        <result column="completed_nodes" property="completedNodes"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <resultMap id="VOResultMap" type="com.solidoa.workflow.vo.ApprovalRecordVO">
+        <id column="id" property="id"/>
+        <result column="record_no" property="recordNo"/>
+        <result column="business_type" property="businessType"/>
+        <result column="business_type_name" property="businessTypeName"/>
+        <result column="business_id" property="businessId"/>
+        <result column="user_id" property="userId"/>
+        <result column="user_name" property="userName"/>
+        <result column="dept_id" property="deptId"/>
+        <result column="dept_name" property="deptName"/>
+        <result column="title" property="title"/>
+        <result column="amount" property="amount"/>
+        <result column="start_date" property="startDate"/>
+        <result column="end_date" property="endDate"/>
+        <result column="status" property="status"/>
+        <result column="status_name" property="statusName"/>
+        <result column="current_node" property="currentNode"/>
+        <result column="total_nodes" property="totalNodes"/>
+        <result column="completed_nodes" property="completedNodes"/>
+        <result column="progress" property="progress"/>
+        <result column="create_time" property="createTime"/>
+        <result column="create_time_str" property="createTimeStr"/>
+    </resultMap>
+
+    <!-- 根据业务查询审批记录 -->
+    <select id="selectByBusiness" resultMap="BaseResultMap">
+        SELECT * FROM oa_approval_record
+        WHERE business_type = #{businessType} AND business_id = #{businessId}
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- 查询已处理任务列表 -->
+    <select id="selectProcessedTaskList" resultType="com.solidoa.workflow.vo.TaskVO">
+        SELECT ar.business_type as businessType,
+               ar.business_id as businessId,
+               CASE ar.business_type
+                   WHEN 'LEAVE' THEN (SELECT leave_no FROM oa_leave WHERE id = ar.business_id)
+                   WHEN 'EXPENSE' THEN (SELECT expense_no FROM oa_expense WHERE id = ar.business_id)
+                   WHEN 'STAMP' THEN (SELECT stamp_no FROM oa_stamp WHERE id = ar.business_id)
+                   WHEN 'PURCHASE' THEN (SELECT purchase_no FROM oa_purchase WHERE id = ar.business_id)
+               END as businessNo,
+               ar.approve_type as status,
+               ar.create_time as applyTime
+        FROM oa_approval_record ar
+        WHERE ar.approver_id = #{approverId}
+        ORDER BY ar.create_time DESC
+    </select>
+
+    <!-- 分页查询已处理任务列表 -->
+    <select id="selectProcessedTaskListPage" resultType="com.solidoa.workflow.vo.TaskVO">
+        SELECT ar.business_type as businessType,
+               ar.business_id as businessId,
+               CASE ar.business_type
+                   WHEN 'LEAVE' THEN (SELECT leave_no FROM oa_leave WHERE id = ar.business_id)
+                   WHEN 'EXPENSE' THEN (SELECT expense_no FROM oa_expense WHERE id = ar.business_id)
+                   WHEN 'STAMP' THEN (SELECT stamp_no FROM oa_stamp WHERE id = ar.business_id)
+                   WHEN 'PURCHASE' THEN (SELECT purchase_no FROM oa_purchase WHERE id = ar.business_id)
+               END as businessNo,
+               ar.approve_type as status,
+               ar.create_time as applyTime
+        FROM oa_approval_record ar
+        WHERE ar.approver_id = #{approverId}
+        ORDER BY ar.create_time DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <!-- 统计已处理任务数量 -->
+    <select id="countProcessedTaskList" resultType="long">
+        SELECT COUNT(*) FROM oa_approval_record WHERE approver_id = #{approverId}
+    </select>
+
+    <!-- 查询我发起的申请列表 -->
+    <select id="selectMyApply" resultMap="VOResultMap">
+        SELECT ar.id, ar.record_no, ar.business_type,
+               CASE ar.business_type
+                   WHEN 'LEAVE' THEN '请假'
+                   WHEN 'EXPENSE' THEN '报销'
+                   WHEN 'PURCHASE' THEN '采购'
+                   WHEN 'SALARY' THEN '工资'
+                   WHEN 'STAMP' THEN '用印'
+                   WHEN 'OVERTIME' THEN '加班'
+                   WHEN 'BUSINESS_TRIP' THEN '出差'
+                   WHEN 'REPAIR_CARD' THEN '补卡'
+                   WHEN 'OUTING' THEN '外出'
+                   ELSE ar.business_type
+               END AS business_type_name,
+               ar.business_id, ar.user_id, ar.user_name,
+               ar.dept_id, ar.dept_name, ar.title, ar.amount,
+               ar.start_date, ar.end_date, ar.status,
+               CASE ar.status
+                   WHEN 'PENDING' THEN '审批中'
+                   WHEN 'APPROVED' THEN '已通过'
+                   WHEN 'REJECTED' THEN '已拒绝'
+                   WHEN 'CANCELLED' THEN '已撤回'
+                   ELSE ar.status
+               END AS status_name,
+               ar.current_node, ar.total_nodes, ar.completed_nodes,
+               CONCAT(ar.completed_nodes, '/', ar.total_nodes) AS progress,
+               ar.create_time,
+               DATE_FORMAT(ar.create_time, '%Y-%m-%d %H:%i') AS create_time_str
+        FROM oa_approval_record ar
+        <where>
+            <if test="userId != null">AND ar.user_id = #{userId}</if>
+            <if test="businessType != null and businessType != ''">AND ar.business_type = #{businessType}</if>
+            <if test="status != null and status != ''">AND ar.status = #{status}</if>
+            <if test="startDate != null and startDate != ''">AND ar.create_time &gt;= #{startDate}</if>
+            <if test="endDate != null and endDate != ''">AND ar.create_time &lt;= #{endDate}</if>
+        </where>
+        ORDER BY ar.create_time DESC
+    </select>
+
+    <!-- 查询我审批过的申请列表 -->
+    <select id="selectMyApproved" resultMap="VOResultMap">
+        SELECT DISTINCT ar.id, ar.record_no, ar.business_type,
+               CASE ar.business_type
+                   WHEN 'LEAVE' THEN '请假'
+                   WHEN 'EXPENSE' THEN '报销'
+                   WHEN 'PURCHASE' THEN '采购'
+                   WHEN 'SALARY' THEN '工资'
+                   WHEN 'STAMP' THEN '用印'
+                   WHEN 'OVERTIME' THEN '加班'
+                   WHEN 'BUSINESS_TRIP' THEN '出差'
+                   WHEN 'REPAIR_CARD' THEN '补卡'
+                   WHEN 'OUTING' THEN '外出'
+                   ELSE ar.business_type
+               END AS business_type_name,
+               ar.business_id, ar.user_id, ar.user_name,
+               ar.dept_id, ar.dept_name, ar.title, ar.amount,
+               ar.start_date, ar.end_date, ar.status,
+               CASE ar.status
+                   WHEN 'PENDING' THEN '审批中'
+                   WHEN 'APPROVED' THEN '已通过'
+                   WHEN 'REJECTED' THEN '已拒绝'
+                   WHEN 'CANCELLED' THEN '已撤回'
+                   ELSE ar.status
+               END AS status_name,
+               ar.current_node, ar.total_nodes, ar.completed_nodes,
+               CONCAT(ar.completed_nodes, '/', ar.total_nodes) AS progress,
+               ar.create_time,
+               DATE_FORMAT(ar.create_time, '%Y-%m-%d %H:%i') AS create_time_str
+        FROM oa_approval_record ar
+        INNER JOIN oa_approval_node nd ON nd.business_type = ar.business_type AND nd.business_id = ar.business_id
+        WHERE nd.approver_id = #{userId}
+        <if test="businessType != null and businessType != ''">AND ar.business_type = #{businessType}</if>
+        <if test="status != null and status != ''">AND ar.status = #{status}</if>
+        <if test="startDate != null and startDate != ''">AND ar.create_time &gt;= #{startDate}</if>
+        <if test="endDate != null and endDate != ''">AND ar.create_time &lt;= #{endDate}</if>
+        ORDER BY ar.create_time DESC
+    </select>
+
+    <!-- 查询全部审批记录(管理员) -->
+    <select id="selectAllRecord" resultMap="VOResultMap">
+        SELECT ar.id, ar.record_no, ar.business_type,
+               CASE ar.business_type
+                   WHEN 'LEAVE' THEN '请假'
+                   WHEN 'EXPENSE' THEN '报销'
+                   WHEN 'PURCHASE' THEN '采购'
+                   WHEN 'SALARY' THEN '工资'
+                   WHEN 'STAMP' THEN '用印'
+                   WHEN 'OVERTIME' THEN '加班'
+                   WHEN 'BUSINESS_TRIP' THEN '出差'
+                   WHEN 'REPAIR_CARD' THEN '补卡'
+                   WHEN 'OUTING' THEN '外出'
+                   ELSE ar.business_type
+               END AS business_type_name,
+               ar.business_id, ar.user_id, ar.user_name,
+               ar.dept_id, ar.dept_name, ar.title, ar.amount,
+               ar.start_date, ar.end_date, ar.status,
+               CASE ar.status
+                   WHEN 'PENDING' THEN '审批中'
+                   WHEN 'APPROVED' THEN '已通过'
+                   WHEN 'REJECTED' THEN '已拒绝'
+                   WHEN 'CANCELLED' THEN '已撤回'
+                   ELSE ar.status
+               END AS status_name,
+               ar.current_node, ar.total_nodes, ar.completed_nodes,
+               CONCAT(ar.completed_nodes, '/', ar.total_nodes) AS progress,
+               ar.create_time,
+               DATE_FORMAT(ar.create_time, '%Y-%m-%d %H:%i') AS create_time_str
+        FROM oa_approval_record ar
+        <where>
+            <if test="userId != null">AND ar.user_id = #{userId}</if>
+            <if test="deptId != null">AND ar.dept_id = #{deptId}</if>
+            <if test="businessType != null and businessType != ''">AND ar.business_type = #{businessType}</if>
+            <if test="status != null and status != ''">AND ar.status = #{status}</if>
+            <if test="startDate != null and startDate != ''">AND ar.create_time &gt;= #{startDate}</if>
+            <if test="endDate != null and endDate != ''">AND ar.create_time &lt;= #{endDate}</if>
+        </where>
+        ORDER BY ar.create_time DESC
+    </select>
+
+    <!-- 查询当日最大审批编号 -->
+    <select id="selectMaxRecordNoByPrefix" resultType="java.lang.String">
+        SELECT MAX(record_no) FROM oa_approval_record
+        WHERE record_no LIKE CONCAT(#{prefix}, '%')
+    </select>
+
+</mapper>

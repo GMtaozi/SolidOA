@@ -1,0 +1,197 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-05-26T00:00:00.000Z",
+  "title": "Design System: SolidOA",
+  "extensions": {
+    "colorMeta": {
+      "primary": {
+        "role": "primary",
+        "displayName": "云青蓝",
+        "canonical": "#60A5FA",
+        "tonalRamp": ["#EFF6FF", "#DBEAFE", "#BFDBFE", "#93C5FD", "#60A5FA", "#3B82F6", "#2563EB", "#1D4ED8"]
+      },
+      "primary-light": {
+        "role": "primary",
+        "displayName": "云青蓝浅",
+        "canonical": "#93C5FD",
+        "tonalRamp": ["#EFF6FF", "#DBEAFE", "#BFDBFE", "#93C5FD", "#60A5FA", "#3B82F6", "#2563EB", "#1D4ED8"]
+      },
+      "mint-green": {
+        "role": "success",
+        "displayName": "薄荷绿",
+        "canonical": "#34D399",
+        "tonalRamp": ["#ECFDF5", "#D1FAE5", "#A7F3D0", "#6EE7B7", "#34D399", "#10B981", "#059669", "#047857"]
+      },
+      "honey-yellow": {
+        "role": "warning",
+        "displayName": "蜂蜜黄",
+        "canonical": "#FBBF24",
+        "tonalRamp": ["#FFFBEB", "#FEF3C7", "#FDE68A", "#FCD34D", "#FBBF24", "#F59E0B", "#D97706", "#B45309"]
+      },
+      "peach-red": {
+        "role": "danger",
+        "displayName": "蜜桃红",
+        "canonical": "#FCA5A5",
+        "tonalRamp": ["#FEF2F2", "#FEE2E2", "#FECACA", "#FCA5A5", "#F87171", "#EF4444", "#DC2626", "#B91C1C"]
+      },
+      "bg-primary": {
+        "role": "neutral",
+        "displayName": "背景主色",
+        "canonical": "#f7f5f2",
+        "tonalRamp": ["#FEFEFE", "#FCFCFB", "#F9F8F6", "#F7F5F2", "#F0EDE9", "#E5E2DE", "#D1CEC9", "#B8B4AF"]
+      },
+      "text-primary": {
+        "role": "neutral",
+        "displayName": "主文字",
+        "canonical": "#3B3B3B",
+        "tonalRamp": ["#FAFAFA", "#F5F5F5", "#EBEBEB", "#3B3B3B", "#2D2D2D", "#1F1F1F", "#141414", "#0A0A0A"]
+      },
+      "text-secondary": {
+        "role": "neutral",
+        "displayName": "次文字",
+        "canonical": "#9CA3AF",
+        "tonalRamp": ["#F9FAFB", "#F3F4F6", "#E5E7EB", "#9CA3AF", "#6B7280", "#4B5563", "#374151", "#1F2937"]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "页面大标题、统计卡片主数字"
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "卡片标题、模块标题"
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "区块标题、次级页面标题"
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "正文内容、表单标签"
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "按钮文字、时间戳、徽章标签"
+      }
+    },
+    "shadows": [
+      {
+        "name": "shadow-base",
+        "value": "0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.02)",
+        "purpose": "卡片默认状态、分隔线阴影"
+      },
+      {
+        "name": "shadow-hover",
+        "value": "0 20px 35px -12px rgba(0, 0, 0, 0.1)",
+        "purpose": "悬停态卡片上浮、按钮悬停背景"
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-out",
+        "value": "cubic-bezier(0.25, 0.1, 0.25, 1)",
+        "purpose": "默认过渡缓出"
+      },
+      {
+        "name": "duration-fast",
+        "value": "0.15s",
+        "purpose": "快速状态切换"
+      },
+      {
+        "name": "duration-normal",
+        "value": "0.25s",
+        "purpose": "常规过渡"
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "mobile",
+        "value": "768px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "主要操作按钮，用于表单提交、重要操作",
+      "html": "<button class=\"ds-btn-primary\">提交</button>",
+      "css": ".ds-btn-primary { background: #60A5FA; color: #ffffff; padding: 10px 20px; border-radius: 12px; border: none; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.25s ease; } .ds-btn-primary:hover { background: #3B82F6; box-shadow: 0 4px 12px rgba(96, 165, 250, 0.4); } .ds-btn-primary:focus-visible { outline: 2px solid #60A5FA; outline-offset: 2px; }"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "次要操作按钮，用于取消、返回等",
+      "html": "<button class=\"ds-btn-ghost\">取消</button>",
+      "css": ".ds-btn-ghost { background: transparent; color: #9CA3AF; padding: 10px 20px; border-radius: 12px; border: none; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.25s ease; } .ds-btn-ghost:hover { background: rgba(96, 165, 250, 0.08); color: #60A5FA; }"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "内容容器卡片，圆角 16px，轻柔阴影",
+      "html": "<div class=\"ds-card\"><div class=\"ds-card-header\">标题</div><div class=\"ds-card-body\">内容</div></div>",
+      "css": ".ds-card { background: #ffffff; border-radius: 16px; padding: 24px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.02); transition: all 0.25s ease; } .ds-card:hover { box-shadow: 0 20px 35px -12px rgba(0, 0, 0, 0.1); transform: translateY(-2px); }"
+    },
+    {
+      "name": "Input Field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "表单输入框，浅灰背景，聚焦时蓝色边框",
+      "html": "<input class=\"ds-input\" type=\"text\" placeholder=\"请输入\" />",
+      "css": ".ds-input { background: #f7f5f2; border: 1px solid #F0EDE9; border-radius: 8px; padding: 10px 16px; font-size: 14px; color: #3B3B3B; transition: all 0.25s ease; width: 100%; } .ds-input::placeholder { color: #9CA3AF; } .ds-input:focus { outline: none; border-color: #60A5FA; box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.15); }"
+    },
+    {
+      "name": "Nav Item",
+      "kind": "nav",
+      "refersTo": "nav-item",
+      "description": "侧边栏导航项，悬停浅蓝背景，激活态左侧蓝色指示条",
+      "html": "<button class=\"ds-nav-item\"><span>首页</span></button>",
+      "css": ".ds-nav-item { display: flex; align-items: center; gap: 12px; width: 100%; padding: 14px 16px; background: transparent; border: none; border-radius: 12px; color: #9CA3AF; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.25s ease; text-align: left; } .ds-nav-item:hover { background: rgba(96, 165, 250, 0.08); color: #3B3B3B; } .ds-nav-item.active { background: rgba(96, 165, 250, 0.1); color: #60A5FA; } .ds-nav-item.active::before { content: ''; position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 3px; height: 24px; background: #60A5FA; border-radius: 2px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Soft Workspace",
+    "overview": "SolidOA 是一款面向中小型企业的轻量级办公自动化系统。视觉上追求柔和舒适感，像一片阳光充足的开放式办公空间——温暖而不沉闷，专业而不冷漠。界面以大面积暖白和浅灰为底，配以轻柔的蓝绿点缀，让日常审批和数据查看变成一种轻松的体验，而非视觉负担。",
+    "keyCharacteristics": [
+      "柔和圆角与轻柔阴影营造无压感",
+      "克制用色，主色仅占 10% 以下",
+      "清晰的信息层次，而非堆砌表格",
+      "微妙的动效过渡，不干扰操作"
+    ],
+    "rules": [
+      {
+        "name": "The One Voice Rule",
+        "body": "主色云青蓝在任意单一屏幕中占比不超过 10%。它的稀缺性即是重点。",
+        "section": "colors"
+      },
+      {
+        "name": "The Flat-By-Default Rule",
+        "body": "卡片默认无阴影。阴影仅在悬停和聚焦时出现，轻微上浮暗示可交互。",
+        "section": "elevation"
+      },
+      {
+        "name": "The Line Length Rule",
+        "body": "正文行长度上限 75ch，防止阅读时视线过度扫视造成疲劳。",
+        "section": "typography"
+      }
+    ],
+    "dos": [
+      "Do 使用系统字体栈，保证跨平台一致性。",
+      "Do 保持主色占比低于 10%，通过稀缺保持重点。",
+      "Do 卡片使用 16px 圆角，配合柔和阴影。",
+      "Do 操作按钮使用语义色（绿=通过，红=拒绝/异常）。",
+      "Do 添加 prefers-reduced-motion 支持，减少动画干扰。"
+    ],
+    "donts": [
+      "Don't 使用花哨渐变背景装饰页面。",
+      "Don't 使用 hero-metric 模板（左边图标右大数字）做统计卡片。",
+      "Don't 表格堆砌过多数据，使用卡片和分栏减轻视觉负担。",
+      "Don't 使用深色主题，本系统为办公场景设计，不适合暗色。",
+      "Don't 添加无意义的动画，所有过渡应服务功能反馈。"
+    ]
+  }
+}

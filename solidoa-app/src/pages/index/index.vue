@@ -74,16 +74,34 @@ const loadData = async () => {
     // 加载待审批数量
     const tasksRes = await api.getMyTasks()
     pendingCount.value = tasksRes.data?.length || 0
+
+    // 加载未读消息数
+    const messageRes = await api.getUnreadCount()
+    messageCount.value = messageRes.data || 0
+
+    // 加载今日签到状态
+    const checkInRes = await api.getTodayCheckIn()
+    todayCheckIn.value = checkInRes.data?.hasCheckedIn || false
   } catch (e) {
     console.error('加载数据失败', e)
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
   if (!userStore.token) {
     uni.reLaunch({ url: '/pages/login/index' })
     return
   }
+
+  // 校验 token 有效性
+  try {
+    await api.getUserInfo()
+  } catch (e) {
+    userStore.logout()
+    uni.reLaunch({ url: '/pages/login/index' })
+    return
+  }
+
   loadData()
 })
 </script>

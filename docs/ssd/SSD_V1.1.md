@@ -1,7 +1,7 @@
 # SolidOA 系统规格说明书（SSD）
 
-> 版本：V1.1
-> 日期：2026-05-24
+> 版本：V1.2
+> 日期：2026-05-26
 > 作者：SolidOA Architecture Team
 > 状态：已评审
 
@@ -680,9 +680,1092 @@ CREATE TABLE oa_reminder_record (
 | 新建报销 | POST | /api/v1/workflow/expense | 创建报销申请 |
 | 报销列表 | GET | /api/v1/workflow/expense | 分页查询报销 |
 | 审批报销 | POST | /api/v1/workflow/expense/{id}/approve | 审批报销 |
+| 新建用印 | POST | /api/v1/workflow/stamp | 创建用印申请 |
+| 用印列表 | GET | /api/v1/workflow/stamp | 分页查询用印 |
+| 用印详情 | GET | /api/v1/workflow/stamp/{id} | 用印详情 |
+| 审批用印 | POST | /api/v1/workflow/stamp/{id}/approve | 审批用印 |
+| 用印登记 | POST | /api/v1/workflow/stamp/{id}/record | 物理用印登记 |
+| 用印统计 | GET | /api/v1/workflow/stamp/statistics | 用印统计 |
+| 新建采购 | POST | /api/v1/workflow/purchase | 创建采购申请 |
+| 采购列表 | GET | /api/v1/workflow/purchase | 分页查询采购 |
+| 采购详情 | GET | /api/v1/workflow/purchase/{id} | 采购详情 |
+| 审批采购 | POST | /api/v1/workflow/purchase/{id}/approve | 审批采购 |
+| 更新进度 | PUT | /api/v1/workflow/purchase/{id}/progress | 更新交付状态 |
+| 采购统计 | GET | /api/v1/workflow/purchase/statistics | 采购统计 |
 | 待我审批 | GET | /api/v1/workflow/tasks/pending | 待审批列表 |
 | 我已审批 | GET | /api/v1/workflow/tasks/approved | 已审批列表 |
 | 我发起的 | GET | /api/v1/workflow/tasks/my-apply | 我发起的 |
+
+### 3.2.7 用印申请模块
+
+##### 3.2.7.1 模块职责
+
+- 用印申请：公章、合同章、法人章、部门章的使用申请
+- 用印审批：部门负责人→行政主管（或法务）的审批流程
+- 用印记录：记录用印时间、领用人、份数等
+- 用印统计：按部门、人员统计用印次数
+
+##### 3.2.7.2 审批流程设计
+
+```
+┌─────────┐    ┌─────────┐    ┌─────────┐    ┌─────────┐
+│  开始   │───▶│ 填写申请 │───▶│ 部门审批 │───▶│ 行政审批 │───▶│  结束   │
+└─────────┘    └─────────┘    └────┬────┘    └────┬────┘    └─────────┘
+                                   │              │
+                                   ▼              ▼
+                               [拒绝]          [拒绝]
+                                   │              │
+                                   ▼              ▼
+                               ┌─────────┐    ┌─────────┐
+                               │  驳回   │    │  驳回   │
+                               └─────────┘    └─────────┘
+
+特殊说明：
+- 公章、法人章：必须行政主管审批
+- 合同章：需要行政主管或法务审批
+- 部门章：只需部门负责人审批
+```
+
+##### 3.2.7.3 用印类型说明
+
+| 用印类型 | 类型码 | 说明 | 审批流程 |
+|----------|--------|------|----------|
+| 公章 | PUBLIC | 公司公章 | 申请人→部门负责人→行政主管 |
+| 合同章 | CONTRACT | 合同专用章 | 申请人→部门负责人→行政主管/法务 |
+| 法人章 | LEGAL | 法人私章 | 申请人→部门负责人→行政主管 |
+| 部门章 | DEPT | 部门章 | 申请人→部门负责人 |
+
+##### 3.2.7.4 数据模型
+
+```sql
+-- 用印申请表
+CREATE TABLE oa_stamp (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    stamp_no VARCHAR(32) NOT NULL UNIQUE COMMENT '用印单号',
+    user_id BIGINT NOT NULL COMMENT '申请人ID',
+    dept_id BIGINT COMMENT '部门ID',
+    stamp_type VARCHAR(20) NOT NULL COMMENT '用印类型:PUBLIC,CONTRACT,LEGAL,DEPT',
+    document_name VARCHAR(200) NOT NULL COMMENT '文件名称',
+    document_count INT DEFAULT 1 COMMENT '用印份数',
+    usage VARCHAR(500) COMMENT '用印用途',
+    attachments VARCHAR(500) COMMENT '附件(逗号分隔)',
+    status VARCHAR(20) DEFAULT 'PENDING' COMMENT '状态:PENDING审批中,APPROVED已同意,REJECTED已拒绝,COMPLETED已完成,CANCELLED已撤回',
+    process_instance_id VARCHAR(100) COMMENT 'Camunda流程实例ID',
+    current_approver_id BIGINT COMMENT '当前审批人ID',
+    stamp_time DATETIME COMMENT '用印时间',
+    received_by VARCHAR(50) COMMENT '领用人',
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_user_id (user_id),
+    INDEX idx_dept_id (dept_id),
+    INDEX idx_stamp_type (stamp_type),
+    INDEX idx_status (status),
+    INDEX idx_create_time (create_time)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 用印记录表（物理用印）
+CREATE TABLE oa_stamp_record (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    stamp_id BIGINT NOT NULL COMMENT '用印申请ID',
+    stamp_time DATETIME NOT NULL COMMENT '用印时间',
+    received_by VARCHAR(50) NOT NULL COMMENT '领用人',
+    received_mobile VARCHAR(20) COMMENT '领用人手机',
+    actual_count INT NOT NULL COMMENT '实际用印份数',
+    operator_id BIGINT COMMENT '办理人ID',
+    operator_name VARCHAR(50) COMMENT '办理人姓名',
+    remark VARCHAR(200) COMMENT '备注',
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_stamp_id (stamp_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+```
+
+##### 3.2.7.5 用印类型枚举
+
+```java
+/**
+ * 用印类型枚举
+ */
+public enum StampType {
+    PUBLIC("PUBLIC", "公章"),
+    CONTRACT("CONTRACT", "合同章"),
+    LEGAL("LEGAL", "法人章"),
+    DEPT("DEPT", "部门章");
+
+    private final String code;
+    private final String desc;
+
+    StampType(String code, String desc) {
+        this.code = code;
+        this.desc = desc;
+    }
+
+    public String getCode() { return code; }
+    public String getDesc() { return desc; }
+
+    public static StampType fromCode(String code) {
+        return Arrays.stream(values())
+            .filter(t -> t.code.equals(code))
+            .findFirst()
+            .orElseThrow(() -> new IllegalArgumentException("无效的用印类型: " + code));
+    }
+
+    /** 是否需要行政主管审批 */
+    public boolean needAdminApproval() {
+        return this == PUBLIC || this == CONTRACT || this == LEGAL;
+    }
+
+    /** 是否需要法务审批 */
+    public boolean needLegalApproval() {
+        return this == CONTRACT;
+    }
+}
+```
+
+##### 3.2.7.6 Camunda流程设计
+
+**用印申请BPMN流程定义：**
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  id="Definitions_Stamp" targetNamespace="http://bpmn.io/schema/bpmn">
+
+  <bpmn:process id="Process_Stamp" name="用印申请流程" isExecutable="true">
+    <bpmn:startEvent id="StartEvent_Stamp" name="开始"/>
+
+    <!-- 填写申请 -->
+    <bpmn:userTask id="Activity_Apply" name="填写申请"/>
+
+    <!-- 用印类型判断网关 -->
+    <bpmn:exclusiveGateway id="Gateway_StampType" name="用印类型判断"/>
+
+    <!-- 审批节点 -->
+    <bpmn:userTask id="Activity_DeptApproval" name="部门负责人审批"/>
+    <bpmn:userTask id="Activity_AdminApproval" name="行政主管审批"/>
+    <bpmn:userTask id="Activity_LegalApproval" name="法务审批"/>
+
+    <!-- 结束事件 -->
+    <bpmn:endEvent id="EndEvent_Approved" name="审批通过"/>
+    <bpmn:endEvent id="EndEvent_Rejected" name="审批拒绝"/>
+
+    <!-- 流程连接 -->
+    <bpmn:sequenceFlow id="Flow_Start" sourceRef="StartEvent_Stamp" targetRef="Activity_Apply"/>
+    <bpmn:sequenceFlow id="Flow_Apply" sourceRef="Activity_Apply" targetRef="Gateway_StampType"/>
+
+    <!-- 部门章：仅部门审批 -->
+    <bpmn:sequenceFlow id="Flow_DeptOnly" sourceRef="Gateway_StampType" targetRef="Activity_DeptApproval">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${stampType == 'DEPT'}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+
+    <!-- 公章/法人章：部门+行政 -->
+    <bpmn:sequenceFlow id="Flow_NeedAdmin" sourceRef="Gateway_StampType" targetRef="Activity_DeptApproval">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${stampType in ['PUBLIC', 'LEGAL']}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+
+    <!-- 合同章：部门+法务 -->
+    <bpmn:sequenceFlow id="Flow_NeedLegal" sourceRef="Gateway_StampType" targetRef="Activity_DeptApproval">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${stampType == 'CONTRACT'}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+
+    <!-- 部门审批后分流 -->
+    <bpmn:sequenceFlow id="Flow_DeptToAdmin" sourceRef="Activity_DeptApproval" targetRef="Activity_AdminApproval">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${stampType in ['PUBLIC', 'LEGAL']}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_DeptToLegal" sourceRef="Activity_DeptApproval" targetRef="Activity_LegalApproval">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${stampType == 'CONTRACT'}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_DeptOnlyEnd" sourceRef="Activity_DeptApproval" targetRef="EndEvent_Approved">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${stampType == 'DEPT'}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+
+    <!-- 行政/法务审批通过 -->
+    <bpmn:sequenceFlow id="Flow_AdminEnd" sourceRef="Activity_AdminApproval" targetRef="EndEvent_Approved"/>
+    <bpmn:sequenceFlow id="Flow_LegalEnd" sourceRef="Activity_LegalApproval" targetRef="EndEvent_Approved"/>
+
+    <!-- 拒绝路径 -->
+    <bpmn:sequenceFlow id="Flow_DeptReject" sourceRef="Activity_DeptApproval" targetRef="EndEvent_Rejected"/>
+    <bpmn:sequenceFlow id="Flow_AdminReject" sourceRef="Activity_AdminApproval" targetRef="EndEvent_Rejected"/>
+    <bpmn:sequenceFlow id="Flow_LegalReject" sourceRef="Activity_LegalApproval" targetRef="EndEvent_Rejected"/>
+  </bpmn:process>
+</bpmn:definitions>
+```
+
+##### 3.2.7.7 Controller接口定义
+
+```java
+/**
+ * 用印申请Controller
+ */
+@RestController
+@RequestMapping("/api/v1/workflow/stamp")
+@RequiredArgsConstructor
+@Tag(name = "用印申请", description = "用印申请相关接口")
+public class StampController {
+
+    private final StampService stampService;
+
+    @PostMapping
+    @Operation(summary = "新建用印申请")
+    public Result<Long> createStamp(@Valid @RequestBody StampForm form,
+                                    @RequestHeader("Authorization") String token) {
+        Long userId = getUserIdFromToken(token);
+        return Result.success(stampService.createStamp(form, userId));
+    }
+
+    @GetMapping
+    @Operation(summary = "用印列表")
+    public Result<PageResult<StampVO>> listStamp(
+            @RequestParam(defaultValue = "1") Integer pageNum,
+            @RequestParam(defaultValue = "10") Integer pageSize,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String stampType,
+            @RequestParam(required = false) LocalDate startDate,
+            @RequestParam(required = false) LocalDate endDate) {
+        return Result.success(stampService.listStamp(pageNum, pageSize, status, stampType, startDate, endDate));
+    }
+
+    @GetMapping("/{id}")
+    @Operation(summary = "用印详情")
+    public Result<StampVO> getStampById(@PathVariable Long id) {
+        return Result.success(stampService.getStampById(id));
+    }
+
+    @PostMapping("/{id}/approve")
+    @Operation(summary = "审批用印")
+    public Result<Void> approveStamp(@PathVariable Long id,
+                                     @Valid @RequestBody ApproveForm form,
+                                     @RequestHeader("Authorization") String token) {
+        Long approverId = getUserIdFromToken(token);
+        stampService.approveStamp(id, form, approverId);
+        return Result.success();
+    }
+
+    @PutMapping("/{id}/cancel")
+    @Operation(summary = "撤回用印申请")
+    public Result<Void> cancelStamp(@PathVariable Long id,
+                                     @RequestHeader("Authorization") String token) {
+        Long userId = getUserIdFromToken(token);
+        stampService.cancelStamp(id, userId);
+        return Result.success();
+    }
+
+    @PostMapping("/{id}/record")
+    @Operation(summary = "物理用印登记")
+    public Result<Void> recordStamp(@PathVariable Long id,
+                                     @Valid @RequestBody StampRecordForm form,
+                                     @RequestHeader("Authorization") String token) {
+        Long operatorId = getUserIdFromToken(token);
+        stampService.recordStamp(id, form, operatorId);
+        return Result.success();
+    }
+
+    @GetMapping("/statistics")
+    @Operation(summary = "用印统计")
+    public Result<StampStatisticsVO> getStatistics(
+            @RequestParam(required = false) LocalDate startDate,
+            @RequestParam(required = false) LocalDate endDate,
+            @RequestParam(required = false) Long deptId) {
+        return Result.success(stampService.getStatistics(startDate, endDate, deptId));
+    }
+
+    @GetMapping("/types")
+    @Operation(summary = "用印类型列表")
+    public Result<List<EnumVO>> getStampTypes() {
+        return Result.success(stampService.getStampTypes());
+    }
+}
+```
+
+##### 3.2.7.8 Service核心逻辑
+
+```java
+/**
+ * 用印申请Service
+ */
+@Service
+@RequiredArgsConstructor
+@Slf4j
+public class StampService {
+
+    private final StampMapper stampMapper;
+    private final StampRecordMapper stampRecordMapper;
+    private final CamundaClient camundaClient;
+    private final MessageClient messageClient;
+
+    /**
+     * 创建用印申请
+     */
+    @Transactional
+    public Long createStamp(StampForm form, Long userId) {
+        // 1. 验证用户和部门
+        UserDTO user = getUserById(userId);
+        if (user == null) {
+            throw new BusinessException("用户不存在");
+        }
+
+        // 2. 生成用印单号 YS + 年月日 + 序号
+        String stampNo = generateStampNo();
+
+        // 3. 确定审批人
+        Long deptLeaderId = getDeptLeaderId(user.getDeptId());
+
+        // 4. 创建申请记录
+        Stamp stamp = new Stamp();
+        stamp.setStampNo(stampNo);
+        stamp.setUserId(userId);
+        stamp.setDeptId(user.getDeptId());
+        stamp.setStampType(form.getStampType());
+        stamp.setDocumentName(form.getDocumentName());
+        stamp.setDocumentCount(form.getDocumentCount());
+        stamp.setUsage(form.getUsage());
+        stamp.setAttachments(String.join(",", form.getAttachments()));
+        stamp.setStatus(ApprovalStatus.PENDING.getCode());
+        stamp.setCurrentApproverId(deptLeaderId);
+        stampMapper.insert(stamp);
+
+        // 5. 启动Camunda流程
+        Map<String, Object> variables = new HashMap<>();
+        variables.put("stampType", form.getStampType());
+        variables.put("userId", userId);
+        variables.put("deptId", user.getDeptId());
+        variables.put("stampId", stamp.getId());
+        variables.put("needLegalApproval", StampType.fromCode(form.getStampType()).needLegalApproval());
+
+        String processInstanceId = camundaClient.startProcess("Process_Stamp", variables);
+        stamp.setProcessInstanceId(processInstanceId);
+        stampMapper.updateById(stamp);
+
+        // 6. 发送消息通知审批人
+        messageClient.sendApprovalNotify(deptLeaderId, "STAMP", stamp.getId(), "用印申请待审批");
+
+        log.info("创建用印申请成功: stampNo={}, userId={}", stampNo, userId);
+        return stamp.getId();
+    }
+
+    /**
+     * 审批用印申请
+     */
+    @Transactional
+    public void approveStamp(Long stampId, ApproveForm form, Long approverId) {
+        Stamp stamp = stampMapper.selectById(stampId);
+        if (stamp == null) {
+            throw new BusinessException("用印申请不存在");
+        }
+
+        // 验证审批人
+        if (!stamp.getCurrentApproverId().equals(approverId)) {
+            throw new BusinessException("您不是当前审批人");
+        }
+
+        // 验证状态
+        if (!ApprovalStatus.PENDING.getCode().equals(stamp.getStatus())) {
+            throw new BusinessException("当前状态不允许审批");
+        }
+
+        // 保存审批记录
+        saveApprovalRecord(stampId, "STAMP", approverId, form.getApproveType(), form.getComment());
+
+        if ("APPROVE".equals(form.getApproveType())) {
+            // 同意：完成任务，推进Camunda流程
+            camundaClient.completeTask(stamp.getProcessInstanceId(), approverId);
+
+            // 更新申请状态
+            stamp.setStatus(ApprovalStatus.APPROVED.getCode());
+            stamp.setUpdateTime(LocalDateTime.now());
+            stampMapper.updateById(stamp);
+
+            // 根据用印类型判断是否需要继续审批
+            Long nextApproverId = getNextApprover(stamp);
+            if (nextApproverId != null) {
+                stamp.setCurrentApproverId(nextApproverId);
+                stamp.setStatus(ApprovalStatus.PENDING.getCode());
+                stampMapper.updateById(stamp);
+                messageClient.sendApprovalNotify(nextApproverId, "STAMP", stampId, "用印申请待审批");
+            }
+
+            // 通知申请人
+            messageClient.sendMessage(stamp.getUserId(), "用印申请已通过", "您提交的用印申请已审批通过");
+
+        } else if ("REJECT".equals(form.getApproveType())) {
+            // 拒绝
+            stamp.setStatus(ApprovalStatus.REJECTED.getCode());
+            stamp.setUpdateTime(LocalDateTime.now());
+            stampMapper.updateById(stamp);
+
+            // 通知申请人
+            messageClient.sendMessage(stamp.getUserId(), "用印申请被拒绝",
+                "您提交的用印申请被拒绝，原因：" + form.getComment());
+        }
+
+        log.info("审批用印申请: stampId={}, approverId={}, type={}", stampId, approverId, form.getApproveType());
+    }
+
+    /**
+     * 物理用印登记
+     */
+    @Transactional
+    public void recordStamp(Long stampId, StampRecordForm form, Long operatorId) {
+        Stamp stamp = stampMapper.selectById(stampId);
+        if (stamp == null) {
+            throw new BusinessException("用印申请不存在");
+        }
+
+        if (!ApprovalStatus.APPROVED.getCode().equals(stamp.getStatus())) {
+            throw new BusinessException("仅已审批通过的申请可以登记用印");
+        }
+
+        // 创建用印记录
+        StampRecord record = new StampRecord();
+        record.setStampId(stampId);
+        record.setStampTime(form.getStampTime());
+        record.setReceivedBy(form.getReceivedBy());
+        record.setReceivedMobile(form.getReceivedMobile());
+        record.setActualCount(form.getActualCount());
+        record.setOperatorId(operatorId);
+        record.setOperatorName(getUserById(operatorId).getRealName());
+        record.setRemark(form.getRemark());
+        stampRecordMapper.insert(record);
+
+        // 更新申请状态
+        stamp.setStampTime(form.getStampTime());
+        stamp.setReceivedBy(form.getReceivedBy());
+        stamp.setStatus(ApprovalStatus.COMPLETED.getCode());
+        stampMapper.updateById(stamp);
+
+        log.info("登记物理用印: stampId={}, receivedBy={}", stampId, form.getReceivedBy());
+    }
+
+    /**
+     * 生成用印单号
+     */
+    private String generateStampNo() {
+        String prefix = "YS" + LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+        String maxNo = stampMapper.selectMaxStampNo(prefix + "%");
+        if (maxNo == null) {
+            return prefix + "0001";
+        }
+        int seq = Integer.parseInt(maxNo.substring(maxNo.length() - 4)) + 1;
+        return prefix + String.format("%04d", seq);
+    }
+}
+```
+
+---
+
+### 3.2.8 采购申请模块
+
+##### 3.2.8.1 模块职责
+
+- 采购申请：办公用品、IT设备、家具、软件/服务的采购申请
+- 采购审批：根据金额阈值决定审批流程
+- 供应商管理：可选填供应商信息
+- 采购进度：跟踪采购到货状态
+
+##### 3.2.8.2 审批流程设计
+
+```
+┌─────────┐    ┌─────────┐    ┌─────────┐    ┌─────────┐    ┌─────────┐
+│  开始   │───▶│ 填写申请 │───▶│ 部门审批 │───▶│ 采购审批 │───▶│  结束   │
+└─────────┘    └─────────┘    └────┬────┘    └────┬────┘    └─────────┘
+                                   │              │
+                                   ▼              ▼
+                               [拒绝]          [拒绝]
+                                   │              │
+                                   ▼              ▼
+                               ┌─────────┐    ┌─────────┐
+                               │  驳回   │    │  驳回   │
+                               └─────────┘    └─────────┘
+
+阈值规则：
+- 金额 < 5000元：申请人→部门负责人（直接通过）
+- 金额 >= 5000元：申请人→部门负责人→采购部门
+- 金额 >= 20000元：申请人→部门负责人→采购部门→财务审批
+```
+
+##### 3.2.8.3 采购类型说明
+
+| 采购类型 | 类型码 | 说明 | 预算归属 |
+|----------|--------|------|----------|
+| 办公用品 | OFFICE | 笔、本、打印耗材等 | 行政预算 |
+| IT设备 | IT | 电脑、显示器、键盘等 | IT预算 |
+| 家具 | FURNITURE | 桌椅、柜子等 | 行政预算 |
+| 软件/服务 | SOFTWARE | 软件授权、云服务等 | IT预算 |
+| 其他 | OTHER | 其他采购 | 视情况 |
+
+##### 3.2.8.4 数据模型
+
+```sql
+-- 采购申请表
+CREATE TABLE oa_purchase (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    purchase_no VARCHAR(32) NOT NULL UNIQUE COMMENT '采购单号',
+    user_id BIGINT NOT NULL COMMENT '申请人ID',
+    dept_id BIGINT COMMENT '部门ID',
+    purchase_type VARCHAR(20) NOT NULL COMMENT '采购类型:OFFICE,IT,FURNITURE,SOFTWARE,OTHER',
+    item_name VARCHAR(200) NOT NULL COMMENT '物品名称',
+    quantity INT DEFAULT 1 COMMENT '采购数量',
+    unit VARCHAR(20) COMMENT '单位',
+    budget_amount DECIMAL(10,2) COMMENT '预算金额',
+    supplier_name VARCHAR(100) COMMENT '供应商名称',
+    supplier_contact VARCHAR(50) COMMENT '供应商联系人',
+    supplier_phone VARCHAR(20) COMMENT '供应商电话',
+    reason TEXT COMMENT '采购原因',
+    attachments VARCHAR(500) COMMENT '附件(逗号分隔)',
+    delivery_status VARCHAR(20) DEFAULT 'PENDING' COMMENT '交付状态:PENDING待采购,PURCHASING采购中,DELIVERED已到货,COMPLETED已完成',
+    status VARCHAR(20) DEFAULT 'PENDING' COMMENT '审批状态:PENDING审批中,APPROVED已同意,REJECTED已拒绝,COMPLETED已完成,CANCELLED已撤回',
+    process_instance_id VARCHAR(100) COMMENT 'Camunda流程实例ID',
+    current_approver_id BIGINT COMMENT '当前审批人ID',
+    expected_delivery_date DATE COMMENT '期望交付日期',
+    actual_delivery_date DATE COMMENT '实际交付日期',
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_user_id (user_id),
+    INDEX idx_dept_id (dept_id),
+    INDEX idx_purchase_type (purchase_type),
+    INDEX idx_delivery_status (delivery_status),
+    INDEX idx_status (status),
+    INDEX idx_create_time (create_time)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 采购明细表（复杂采购）
+CREATE TABLE oa_purchase_item (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    purchase_id BIGINT NOT NULL COMMENT '采购单ID',
+    item_name VARCHAR(200) NOT NULL COMMENT '物品名称',
+    spec VARCHAR(200) COMMENT '规格型号',
+    quantity INT DEFAULT 1 COMMENT '数量',
+    unit VARCHAR(20) COMMENT '单位',
+    unit_price DECIMAL(10,2) COMMENT '单价',
+    total_price DECIMAL(10,2) COMMENT '总价',
+    remark VARCHAR(200) COMMENT '备注',
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_purchase_id (purchase_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 采购进度记录
+CREATE TABLE oa_purchase_progress (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    purchase_id BIGINT NOT NULL COMMENT '采购单ID',
+    progress_type VARCHAR(20) NOT NULL COMMENT '进度类型:ORDERED已下单,SHIPPING发货中,DELIVERED已到货,REJECTED拒收',
+    progress_desc VARCHAR(200) COMMENT '进度描述',
+    progress_time DATETIME NOT NULL COMMENT '进度时间',
+    operator_id BIGINT COMMENT '操作人',
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_purchase_id (purchase_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+```
+
+##### 3.2.8.5 采购类型枚举和阈值常量
+
+```java
+/**
+ * 采购类型枚举
+ */
+public enum PurchaseType {
+    OFFICE("OFFICE", "办公用品", "行政预算"),
+    IT("IT", "IT设备", "IT预算"),
+    FURNITURE("FURNITURE", "家具", "行政预算"),
+    SOFTWARE("SOFTWARE", "软件/服务", "IT预算"),
+    OTHER("OTHER", "其他", "其他");
+
+    private final String code;
+    private final String desc;
+    private final String budgetCategory;
+
+    PurchaseType(String code, String desc, String budgetCategory) {
+        this.code = code;
+        this.desc = desc;
+        this.budgetCategory = budgetCategory;
+    }
+
+    public String getCode() { return code; }
+    public String getDesc() { return desc; }
+    public String getBudgetCategory() { return budgetCategory; }
+
+    public static PurchaseType fromCode(String code) {
+        return Arrays.stream(values())
+            .filter(t -> t.code.equals(code))
+            .findFirst()
+            .orElseThrow(() -> new IllegalArgumentException("无效的采购类型: " + code));
+    }
+}
+
+/**
+ * 采购审批阈值常量
+ */
+public class PurchaseThreshold {
+    // 需要采购部门审批的金额阈值
+    public static final BigDecimal PURCHASE_DEPT_THRESHOLD = new BigDecimal("5000");
+    // 需要财务审批的金额阈值
+    public static final BigDecimal FINANCE_APPROVAL_THRESHOLD = new BigDecimal("20000");
+
+    public static boolean needPurchaseApproval(BigDecimal amount) {
+        return amount != null && amount.compareTo(PURCHASE_DEPT_THRESHOLD) >= 0;
+    }
+
+    public static boolean needFinanceApproval(BigDecimal amount) {
+        return amount != null && amount.compareTo(FINANCE_APPROVAL_THRESHOLD) >= 0;
+    }
+
+    public static int getApprovalNodeCount(BigDecimal amount) {
+        if (needFinanceApproval(amount)) return 3; // 部门+采购+财务
+        if (needPurchaseApproval(amount)) return 2; // 部门+采购
+        return 1; // 仅部门
+    }
+}
+
+/**
+ * 交付状态枚举
+ */
+public enum DeliveryStatus {
+    PENDING("PENDING", "待采购"),
+    PURCHASING("PURCHASING", "采购中"),
+    DELIVERED("DELIVERED", "已到货"),
+    COMPLETED("COMPLETED", "已完成");
+
+    private final String code;
+    private final String desc;
+
+    DeliveryStatus(String code, String desc) {
+        this.code = code;
+        this.desc = desc;
+    }
+
+    public String getCode() { return code; }
+    public String getDesc() { return desc; }
+}
+```
+
+##### 3.2.8.6 Camunda流程设计
+
+**采购申请BPMN流程定义：**
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  id="Definitions_Purchase" targetNamespace="http://bpmn.io/schema/bpmn">
+
+  <bpmn:process id="Process_Purchase" name="采购申请流程" isExecutable="true">
+    <bpmn:startEvent id="StartEvent_Purchase" name="开始"/>
+
+    <!-- 填写申请 -->
+    <bpmn:userTask id="Activity_Purchase_Apply" name="填写采购申请"/>
+
+    <!-- 金额判断网关 -->
+    <bpmn:exclusiveGateway id="Gateway_Amount" name="金额判断"/>
+
+    <!-- 审批节点 -->
+    <bpmn:userTask id="Activity_Dept_Approval" name="部门负责人审批"/>
+    <bpmn:userTask id="Activity_Purchase_Dept" name="采购部门审批"/>
+    <bpmn:userTask id="Activity_Finance_Approval" name="财务审批"/>
+
+    <!-- 结束事件 -->
+    <bpmn:endEvent id="EndEvent_Approved" name="审批通过"/>
+    <bpmn:endEvent id="EndEvent_Rejected" name="审批拒绝"/>
+
+    <!-- 流程连接 -->
+    <bpmn:sequenceFlow id="Flow_Start" sourceRef="StartEvent_Purchase" targetRef="Activity_Purchase_Apply"/>
+    <bpmn:sequenceFlow id="Flow_Apply" sourceRef="Activity_Purchase_Apply" targetRef="Gateway_Amount"/>
+
+    <!-- 金额 < 5000: 仅部门审批 -->
+    <bpmn:sequenceFlow id="Flow_Low_Amount" sourceRef="Gateway_Amount" targetRef="Activity_Dept_Approval">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${budgetAmount &lt; 5000}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_Low_End" sourceRef="Activity_Dept_Approval" targetRef="EndEvent_Approved">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${budgetAmount &lt; 5000}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+
+    <!-- 5000 <= 金额 < 20000: 部门 + 采购 -->
+    <bpmn:sequenceFlow id="Flow_Medium_Amount" sourceRef="Gateway_Amount" targetRef="Activity_Dept_Approval">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${budgetAmount &gt;= 5000 &amp;&amp; budgetAmount &lt; 20000}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_To_Purchase_Dept" sourceRef="Activity_Dept_Approval" targetRef="Activity_Purchase_Dept">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${budgetAmount &gt;= 5000 &amp;&amp; budgetAmount &lt; 20000}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_Purchase_Dept_End" sourceRef="Activity_Purchase_Dept" targetRef="EndEvent_Approved"/>
+
+    <!-- 金额 >= 20000: 部门 + 采购 + 财务 -->
+    <bpmn:sequenceFlow id="Flow_High_Amount" sourceRef="Gateway_Amount" targetRef="Activity_Dept_Approval">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${budgetAmount &gt;= 20000}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_To_Finance" sourceRef="Activity_Dept_Approval" targetRef="Activity_Purchase_Dept">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${budgetAmount &gt;= 20000}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_To_Finance_Dept" sourceRef="Activity_Purchase_Dept" targetRef="Activity_Finance_Approval"/>
+    <bpmn:sequenceFlow id="Flow_Finance_End" sourceRef="Activity_Finance_Approval" targetRef="EndEvent_Approved"/>
+
+    <!-- 拒绝路径 -->
+    <bpmn:sequenceFlow id="Flow_Dept_Reject" sourceRef="Activity_Dept_Approval" targetRef="EndEvent_Rejected"/>
+    <bpmn:sequenceFlow id="Flow_Purchase_Reject" sourceRef="Activity_Purchase_Dept" targetRef="EndEvent_Rejected"/>
+    <bpmn:sequenceFlow id="Flow_Finance_Reject" sourceRef="Activity_Finance_Approval" targetRef="EndEvent_Rejected"/>
+  </bpmn:process>
+</bpmn:definitions>
+```
+
+##### 3.2.8.7 Controller接口定义
+
+```java
+/**
+ * 采购申请Controller
+ */
+@RestController
+@RequestMapping("/api/v1/workflow/purchase")
+@RequiredArgsConstructor
+@Tag(name = "采购申请", description = "采购申请相关接口")
+public class PurchaseController {
+
+    private final PurchaseService purchaseService;
+
+    @PostMapping
+    @Operation(summary = "新建采购申请")
+    public Result<Long> createPurchase(@Valid @RequestBody PurchaseForm form,
+                                       @RequestHeader("Authorization") String token) {
+        Long userId = getUserIdFromToken(token);
+        return Result.success(purchaseService.createPurchase(form, userId));
+    }
+
+    @GetMapping
+    @Operation(summary = "采购列表")
+    public Result<PageResult<PurchaseVO>> listPurchase(
+            @RequestParam(defaultValue = "1") Integer pageNum,
+            @RequestParam(defaultValue = "10") Integer pageSize,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String deliveryStatus,
+            @RequestParam(required = false) String purchaseType,
+            @RequestParam(required = false) LocalDate startDate,
+            @RequestParam(required = false) LocalDate endDate) {
+        return Result.success(purchaseService.listPurchase(pageNum, pageSize, status, deliveryStatus, purchaseType, startDate, endDate));
+    }
+
+    @GetMapping("/{id}")
+    @Operation(summary = "采购详情")
+    public Result<PurchaseVO> getPurchaseById(@PathVariable Long id) {
+        return Result.success(purchaseService.getPurchaseById(id));
+    }
+
+    @PostMapping("/{id}/approve")
+    @Operation(summary = "审批采购申请")
+    public Result<Void> approvePurchase(@PathVariable Long id,
+                                        @Valid @RequestBody ApproveForm form,
+                                        @RequestHeader("Authorization") String token) {
+        Long approverId = getUserIdFromToken(token);
+        purchaseService.approvePurchase(id, form, approverId);
+        return Result.success();
+    }
+
+    @PutMapping("/{id}/cancel")
+    @Operation(summary = "撤回采购申请")
+    public Result<Void> cancelPurchase(@PathVariable Long id,
+                                       @RequestHeader("Authorization") String token) {
+        Long userId = getUserIdFromToken(token);
+        purchaseService.cancelPurchase(id, userId);
+        return Result.success();
+    }
+
+    @PutMapping("/{id}/progress")
+    @Operation(summary = "更新采购进度")
+    public Result<Void> updateProgress(@PathVariable Long id,
+                                       @Valid @RequestBody PurchaseProgressForm form,
+                                       @RequestHeader("Authorization") String token) {
+        Long operatorId = getUserIdFromToken(token);
+        purchaseService.updateProgress(id, form, operatorId);
+        return Result.success();
+    }
+
+    @GetMapping("/statistics")
+    @Operation(summary = "采购统计")
+    public Result<PurchaseStatisticsVO> getStatistics(
+            @RequestParam(required = false) LocalDate startDate,
+            @RequestParam(required = false) LocalDate endDate,
+            @RequestParam(required = false) Long deptId,
+            @RequestParam(required = false) String purchaseType) {
+        return Result.success(purchaseService.getStatistics(startDate, endDate, deptId, purchaseType));
+    }
+
+    @GetMapping("/types")
+    @Operation(summary = "采购类型列表")
+    public Result<List<EnumVO>> getPurchaseTypes() {
+        return Result.success(purchaseService.getPurchaseTypes());
+    }
+}
+```
+
+##### 3.2.8.8 Service核心逻辑
+
+```java
+/**
+ * 采购申请Service
+ */
+@Service
+@RequiredArgsConstructor
+@Slf4j
+public class PurchaseService {
+
+    private final PurchaseMapper purchaseMapper;
+    private final PurchaseItemMapper purchaseItemMapper;
+    private final PurchaseProgressMapper progressMapper;
+    private final CamundaClient camundaClient;
+    private final MessageClient messageClient;
+
+    /**
+     * 创建采购申请
+     */
+    @Transactional
+    public Long createPurchase(PurchaseForm form, Long userId) {
+        // 1. 验证用户
+        UserDTO user = getUserById(userId);
+        if (user == null) {
+            throw new BusinessException("用户不存在");
+        }
+
+        // 2. 生成采购单号 CG + 年月日 + 序号
+        String purchaseNo = generatePurchaseNo();
+
+        // 3. 验证预算（如果设置了预算）
+        BigDecimal budgetAmount = form.getBudgetAmount();
+        if (budgetAmount != null && PurchaseThreshold.needFinanceApproval(budgetAmount)) {
+            checkBudgetAvailable(user.getDeptId(), budgetAmount);
+        }
+
+        // 4. 确定审批人
+        Long deptLeaderId = getDeptLeaderId(user.getDeptId());
+        Long purchaseDeptLeaderId = getPurchaseDeptLeaderId();
+
+        // 5. 创建采购申请
+        Purchase purchase = new Purchase();
+        purchase.setPurchaseNo(purchaseNo);
+        purchase.setUserId(userId);
+        purchase.setDeptId(user.getDeptId());
+        purchase.setPurchaseType(form.getPurchaseType());
+        purchase.setItemName(form.getItemName());
+        purchase.setQuantity(form.getQuantity());
+        purchase.setUnit(form.getUnit());
+        purchase.setBudgetAmount(budgetAmount);
+        purchase.setSupplierName(form.getSupplierName());
+        purchase.setSupplierContact(form.getSupplierContact());
+        purchase.setSupplierPhone(form.getSupplierPhone());
+        purchase.setReason(form.getReason());
+        purchase.setAttachments(form.getAttachments() != null ? String.join(",", form.getAttachments()) : null);
+        purchase.setExpectedDeliveryDate(form.getExpectedDeliveryDate());
+        purchase.setStatus(ApprovalStatus.PENDING.getCode());
+        purchase.setDeliveryStatus(DeliveryStatus.PENDING.getCode());
+        purchase.setCurrentApproverId(deptLeaderId);
+        purchaseMapper.insert(purchase);
+
+        // 6. 保存采购明细（如果有）
+        if (form.getItems() != null && !form.getItems().isEmpty()) {
+            for (PurchaseItemForm itemForm : form.getItems()) {
+                PurchaseItem item = new PurchaseItem();
+                item.setPurchaseId(purchase.getId());
+                item.setItemName(itemForm.getItemName());
+                item.setSpec(itemForm.getSpec());
+                item.setQuantity(itemForm.getQuantity());
+                item.setUnit(itemForm.getUnit());
+                item.setUnitPrice(itemForm.getUnitPrice());
+                item.setTotalPrice(itemForm.getUnitPrice().multiply(new BigDecimal(itemForm.getQuantity())));
+                purchaseItemMapper.insert(item);
+            }
+        }
+
+        // 7. 启动Camunda流程
+        Map<String, Object> variables = new HashMap<>();
+        variables.put("budgetAmount", budgetAmount);
+        variables.put("userId", userId);
+        variables.put("deptId", user.getDeptId());
+        variables.put("purchaseId", purchase.getId());
+        variables.put("needPurchaseDept", PurchaseThreshold.needPurchaseApproval(budgetAmount));
+        variables.put("needFinance", PurchaseThreshold.needFinanceApproval(budgetAmount));
+        variables.put("purchaseDeptLeaderId", purchaseDeptLeaderId);
+
+        String processInstanceId = camundaClient.startProcess("Process_Purchase", variables);
+        purchase.setProcessInstanceId(processInstanceId);
+        purchaseMapper.updateById(purchase);
+
+        // 8. 发送消息通知审批人
+        String approvalNode = PurchaseThreshold.needFinanceApproval(budgetAmount) ? "财务审批" :
+                            PurchaseThreshold.needPurchaseApproval(budgetAmount) ? "采购部门审批" : "部门负责人审批";
+        messageClient.sendApprovalNotify(deptLeaderId, "PURCHASE", purchase.getId(), "采购申请待" + approvalNode);
+
+        log.info("创建采购申请成功: purchaseNo={}, userId={}, amount={}", purchaseNo, userId, budgetAmount);
+        return purchase.getId();
+    }
+
+    /**
+     * 审批采购申请
+     */
+    @Transactional
+    public void approvePurchase(Long purchaseId, ApproveForm form, Long approverId) {
+        Purchase purchase = purchaseMapper.selectById(purchaseId);
+        if (purchase == null) {
+            throw new BusinessException("采购申请不存在");
+        }
+
+        if (!purchase.getCurrentApproverId().equals(approverId)) {
+            throw new BusinessException("您不是当前审批人");
+        }
+
+        if (!ApprovalStatus.PENDING.getCode().equals(purchase.getStatus())) {
+            throw new BusinessException("当前状态不允许审批");
+        }
+
+        // 保存审批记录
+        saveApprovalRecord(purchaseId, "PURCHASE", approverId, form.getApproveType(), form.getComment());
+
+        if ("APPROVE".equals(form.getApproveType())) {
+            camundaClient.completeTask(purchase.getProcessInstanceId(), approverId);
+
+            // 确定下一个审批人
+            Long nextApproverId = getNextPurchaseApprover(purchase, approverId);
+            if (nextApproverId != null) {
+                purchase.setCurrentApproverId(nextApproverId);
+                purchaseMapper.updateById(purchase);
+                String approvalNode = determineApprovalNode(purchase);
+                messageClient.sendApprovalNotify(nextApproverId, "PURCHASE", purchaseId, "采购申请待" + approvalNode);
+            } else {
+                // 审批完成
+                purchase.setStatus(ApprovalStatus.APPROVED.getCode());
+                purchase.setDeliveryStatus(DeliveryStatus.PURCHASING.getCode());
+                purchaseMapper.updateById(purchase);
+
+                messageClient.sendMessage(purchase.getUserId(), "采购申请已通过",
+                    "您提交的采购申请（" + purchase.getItemName() + "）已审批通过，请等待采购");
+            }
+
+        } else if ("REJECT".equals(form.getApproveType())) {
+            purchase.setStatus(ApprovalStatus.REJECTED.getCode());
+            purchaseMapper.updateById(purchase);
+
+            // 恢复预算
+            if (purchase.getBudgetAmount() != null) {
+                releaseBudget(purchase.getDeptId(), purchase.getBudgetAmount());
+            }
+
+            messageClient.sendMessage(purchase.getUserId(), "采购申请被拒绝",
+                "您提交的采购申请（" + purchase.getItemName() + "）被拒绝，原因：" + form.getComment());
+        }
+
+        log.info("审批采购申请: purchaseId={}, approverId={}, type={}", purchaseId, approverId, form.getApproveType());
+    }
+
+    /**
+     * 更新采购进度
+     */
+    @Transactional
+    public void updateProgress(Long purchaseId, PurchaseProgressForm form, Long operatorId) {
+        Purchase purchase = purchaseMapper.selectById(purchaseId);
+        if (purchase == null) {
+            throw new BusinessException("采购申请不存在");
+        }
+
+        if (!ApprovalStatus.APPROVED.getCode().equals(purchase.getStatus())) {
+            throw new BusinessException("仅已审批通过的申请可以更新进度");
+        }
+
+        // 保存进度记录
+        PurchaseProgress progress = new PurchaseProgress();
+        progress.setPurchaseId(purchaseId);
+        progress.setProgressType(form.getProgressType());
+        progress.setProgressDesc(form.getProgressDesc());
+        progress.setProgressTime(form.getProgressTime());
+        progress.setOperatorId(operatorId);
+        progressMapper.insert(progress);
+
+        // 更新采购单交付状态
+        purchase.setDeliveryStatus(form.getProgressType());
+        if (DeliveryStatus.DELIVERED.getCode().equals(form.getProgressType())) {
+            purchase.setActualDeliveryDate(LocalDate.now());
+        } else if (DeliveryStatus.COMPLETED.getCode().equals(form.getProgressType())) {
+            purchase.setDeliveryStatus(DeliveryStatus.COMPLETED.getCode());
+            purchase.setActualDeliveryDate(LocalDate.now());
+            messageClient.sendMessage(purchase.getUserId(), "采购已完成",
+                "您申请的物品（" + purchase.getItemName() + "）已到货，请确认签收");
+        }
+        purchaseMapper.updateById(purchase);
+
+        log.info("更新采购进度: purchaseId={}, type={}", purchaseId, form.getProgressType());
+    }
+
+    /**
+     * 获取采购统计
+     */
+    public PurchaseStatisticsVO getStatistics(LocalDate startDate, LocalDate endDate, Long deptId, String purchaseType) {
+        PurchaseStatisticsVO statistics = new PurchaseStatisticsVO();
+
+        List<Purchase> purchases = purchaseMapper.selectStatistics(startDate, endDate, deptId, purchaseType);
+
+        BigDecimal totalAmount = BigDecimal.ZERO;
+        int pendingCount = 0, approvedCount = 0, rejectedCount = 0;
+        Map<String, BigDecimal> typeAmountMap = new HashMap<>();
+        Map<String, Integer> typeCountMap = new HashMap<>();
+
+        for (Purchase p : purchases) {
+            totalAmount = totalAmount.add(p.getBudgetAmount() != null ? p.getBudgetAmount() : BigDecimal.ZERO);
+
+            switch (p.getStatus()) {
+                case "PENDING": pendingCount++; break;
+                case "APPROVED":
+                case "COMPLETED": approvedCount++; break;
+                case "REJECTED": rejectedCount++; break;
+            }
+
+            String type = p.getPurchaseType();
+            typeAmountMap.merge(type, p.getBudgetAmount() != null ? p.getBudgetAmount() : BigDecimal.ZERO, BigDecimal::add);
+            typeCountMap.merge(type, 1, Integer::sum);
+        }
+
+        statistics.setTotalAmount(totalAmount);
+        statistics.setPendingCount(pendingCount);
+        statistics.setApprovedCount(approvedCount);
+        statistics.setRejectedCount(rejectedCount);
+        statistics.setTypeAmountMap(typeAmountMap);
+        statistics.setTypeCountMap(typeCountMap);
+
+        return statistics;
+    }
+
+    /**
+     * 生成采购单号
+     */
+    private String generatePurchaseNo() {
+        String prefix = "CG" + LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+        String maxNo = purchaseMapper.selectMaxPurchaseNo(prefix + "%");
+        if (maxNo == null) {
+            return prefix + "0001";
+        }
+        int seq = Integer.parseInt(maxNo.substring(maxNo.length() - 4)) + 1;
+        return prefix + String.format("%04d", seq);
+    }
+
+    /**
+     * 获取下一个采购审批人
+     */
+    private Long getNextPurchaseApprover(Purchase purchase, Long currentApproverId) {
+        BigDecimal amount = purchase.getBudgetAmount();
+        Long deptId = purchase.getDeptId();
+
+        if (PurchaseThreshold.needFinanceApproval(amount)) {
+            Long deptLeaderId = getDeptLeaderId(deptId);
+            Long purchaseDeptLeaderId = getPurchaseDeptLeaderId();
+            Long financeLeaderId = getFinanceLeaderId();
+
+            if (deptLeaderId.equals(currentApproverId)) {
+                return purchaseDeptLeaderId;
+            } else if (purchaseDeptLeaderId.equals(currentApproverId)) {
+                return financeLeaderId;
+            }
+        } else if (PurchaseThreshold.needPurchaseApproval(amount)) {
+            Long deptLeaderId = getDeptLeaderId(deptId);
+            Long purchaseDeptLeaderId = getPurchaseDeptLeaderId();
+
+            if (deptLeaderId.equals(currentApproverId)) {
+                return purchaseDeptLeaderId;
+            }
+        }
+
+        return null;
+    }
+}
+```
 
 ### 3.3 协作办公模块（collaboration-service）
 
@@ -2193,3 +3276,4 @@ management:
 |------|------|----------|------|
 | V1.0 | 2026-05-24 | 初始版本，完整SSD设计 | SolidOA Architecture Team |
 | V1.1 | 2026-05-24 | 补充熔断降级、死信队列、ShedLock、监控方案、性能指标、工时修正 | SolidOA Architecture Team |
+| V1.2 | 2026-05-26 | 新增用印申请模块(3.2.7)和采购申请模块(3.2.8)详细设计 | SolidOA Architecture Team |

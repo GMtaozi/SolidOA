@@ -1,0 +1,61 @@
+server:
+  port: 8085
+
+spring:
+  application:
+    name: hr-service
+  main:
+    web-application-type: servlet
+  cloud:
+    nacos:
+      config:
+        enabled: false
+        import-check:
+          enabled: false
+      discovery:
+        enabled: false
+
+  datasource:
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3307}/${DB_NAME:oa_hr}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+    username: ${DB_USER:root}
+    password: ${DB_PASSWORD:749958714}
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+
+jwt:
+  secret: ${JWT_SECRET:solidoa-jwt-secret-key-that-is-at-least-256-bits-long}
+  expiration: 86400000
+
+dingtalk:
+  enabled: false
+
+mybatis-plus:
+  mapper-locations: classpath*:/mapper/**/*.xml
+  type-aliases-package: com.solidoa.hr.attendance.entity,com.solidoa.hr.finance.entity
+
+# 网关内部签名密钥
+gateway:
+  internal-secret: ${GATEWAY_INTERNAL_SECRET:solidoa-gw-sign-2026-secure-key}
+
+# Feign 配置
+feign:
+  client:
+    config:
+      default:
+        connectTimeout: 5000
+        readTimeout: 10000
+      system-service:
+        url: http://localhost:8081
+
+logging:
+  level:
+    com.solidoa: DEBUG
