@@ -55,6 +55,12 @@ INSERT INTO sys_permission (name, code, type, url, method, parent_id, sort, icon
   ('请假管理-创建',  'LEAVE_CREATE',       'BUTTON', '/api/v1/workflow/leave',      'POST',   0, 1, NULL, NULL, NULL, 1, NOW(), NOW()),
   ('请假管理-审批',  'LEAVE_APPROVE',      'BUTTON', '/api/v1/workflow/leave/{id}/approve','POST',0,2,NULL,NULL,NULL,1,NOW(),NOW());
 
--- 5. 角色数据权限种子：默认管理员=全部(1), 普通用户=本人(4)
-UPDATE sys_role SET data_scope = 1 WHERE code = 'ADMIN';
-UPDATE sys_role SET data_scope = 4 WHERE code = 'USER';
+-- 5. 角色数据权限种子 (回填)
+-- SYSTEM_ADMIN/FINANCE = 全部(1)
+-- DEPT_MANAGER = 本部门(2)
+-- ATTENDANCE_ADMIN = 本部门及下级(3)
+-- EMPLOYEE = 本人(4)
+UPDATE sys_role SET data_scope = 1 WHERE code IN ('SYSTEM_ADMIN', 'FINANCE');
+UPDATE sys_role SET data_scope = 2 WHERE code = 'DEPT_MANAGER';
+UPDATE sys_role SET data_scope = 3 WHERE code = 'ATTENDANCE_ADMIN';
+UPDATE sys_role SET data_scope = 4 WHERE code = 'EMPLOYEE';
