@@ -68,3 +68,17 @@ feign:
         url: http://localhost:8085
       system-service:
         url: http://localhost:8081
+
+# Sentinel 限流熔断 (V2.0 第 1 章)
+# dashboard: http://localhost:8088 (账号 sentinel / 密码 sentinel)
+spring:
+  cloud:
+    sentinel:
+      enabled: true
+      transport:
+        port: 8719
+        dashboard: localhost:8088
+      # Feign 集成 Sentinel, 所有 Feign 调用自动走限流
+      feign:
+        enabled: true
+      eager: true  # 启动时立即连接 dashboard, 而不是懒加载

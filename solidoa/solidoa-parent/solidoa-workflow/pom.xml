@@ -49,6 +49,12 @@
             <artifactId>spring-cloud-starter-openfeign</artifactId>
         </dependency>
 
+        <!-- Sentinel (V2.0 第 1 章 限流熔断) -->
+        <dependency>
+            <groupId>com.alibaba.cloud</groupId>
+            <artifactId>spring-cloud-starter-alibaba-sentinel</artifactId>
+        </dependency>
+
         <!-- LoadBalancer for Feign -->
         <dependency>
             <groupId>org.springframework.cloud</groupId>

@@ -1,0 +1,43 @@
+# Sentinel 流控规则 (V2.0 第 1 章)
+# 通过 Sentinel Dashboard 拉取, 也可放本地文件
+# 路径: spring.cloud.sentinel.flow-rules 在 application.yml 配置
+
+# 核心审批端点: 100 QPS
+- resource: workflow-approve
+  grade: QPS
+  count: 100
+  controlBehavior: RejectFast
+  limitApp: default
+
+- resource: workflow-reject
+  grade: QPS
+  count: 100
+  controlBehavior: RejectFast
+  limitApp: default
+
+- resource: workflow-transfer
+  grade: QPS
+  count: 50
+  controlBehavior: RejectFast
+  limitApp: default
+
+# 登录端点: 防止暴力破解
+- resource: auth-login
+  grade: QPS
+  count: 20
+  controlBehavior: RejectFast
+  limitApp: default
+
+# 文件上传: 限流保护存储
+- resource: file-upload
+  grade: QPS
+  count: 30
+  controlBehavior: RejectFast
+  limitApp: default
+
+# 消息发送: 防刷
+- resource: message-send
+  grade: QPS
+  count: 200
+  controlBehavior: RejectFast
+  limitApp: default

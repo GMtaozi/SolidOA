@@ -1,0 +1,31 @@
+version: '3.8'
+
+# Seata Server 配置 (V2.0 第 1 章)
+# 使用 Nacos 作为注册中心和配置中心 (复用 solidoa-nacos 容器)
+# 存储模式: file (单机 MVP, 生产建议 DB 模式)
+store:
+  mode: file
+
+# 客户端连接 Seata TC (Transaction Coordinator) 的配置
+# 业务服务 (workflow / hr) 启动时从这里读 registry.conf
+client:
+  application-id: ${SPRING_APPLICATION_NAME:seata-server}
+  tx-service-group: default_tx_group
+  config:
+    type: nacos
+    nacos:
+      server-addr: nacos:8848
+      group: SEATA_GROUP
+      namespace:
+      username: nacos
+      password: nacos
+      data-id: seataServer.properties
+  registry:
+    type: nacos
+    nacos:
+      application: seata-server
+      server-addr: nacos:8848
+      group: SEATA_GROUP
+      namespace:
+      username: nacos
+      password: nacos
