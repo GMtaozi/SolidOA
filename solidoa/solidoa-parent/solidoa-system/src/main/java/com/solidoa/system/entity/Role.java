@@ -13,6 +13,8 @@ public class Role {
     private String code;
     private String description;
     private Integer status;
+    /** 数据权限范围: 1全部 2本部门 3本部门及下级 4本人 5自定义 */
+    private Integer dataScope;
     @TableLogic
     private Integer deleted;
     private LocalDateTime createTime;

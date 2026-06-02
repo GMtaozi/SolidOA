@@ -39,31 +39,32 @@
       </el-tree>
     </el-card>
 
-    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="500px" class="cyber-dialog">
-      <el-form ref="formRef" :model="form" :rules="rules" label-width="80px" class="cyber-form">
-        <el-form-item label="部门名称" prop="name">
-          <el-input v-model="form.name" class="cyber-input" />
-        </el-form-item>
-        <el-form-item label="父部门">
-          <el-select v-model="form.parentId" placeholder="选择父部门" clearable class="cyber-input" style="width: 100%">
-            <el-option :value="0" label="无（顶级部门）" />
-            <el-option
-              v-for="dept in flatDeptList"
-              :key="dept.id"
-              :value="dept.id"
-              :label="dept.name"
-            />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="排序">
-          <el-input-number v-model="form.sort" :min="0" :max="999" class="cyber-input" />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button class="cyber-btn" @click="dialogVisible = false">取消</el-button>
-        <el-button class="cyber-btn primary" type="primary" @click="handleSubmit">确定</el-button>
-      </template>
-    </el-dialog>
+    <OaFormDialog
+      v-model="dialogVisible"
+      :title="dialogTitle"
+      :model="form"
+      :rules="rules"
+      :on-submit="handleSubmit"
+      @success="handleSuccess"
+    >
+      <el-form-item label="部门名称" prop="name">
+        <el-input v-model="form.name" class="cyber-input" />
+      </el-form-item>
+      <el-form-item label="父部门">
+        <el-select v-model="form.parentId" placeholder="选择父部门" clearable class="cyber-input" style="width: 100%">
+          <el-option :value="0" label="无（顶级部门）" />
+          <el-option
+            v-for="dept in flatDeptList"
+            :key="dept.id"
+            :value="dept.id"
+            :label="dept.name"
+          />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="排序">
+        <el-input-number v-model="form.sort" :min="0" :max="999" class="cyber-input" />
+      </el-form-item>
+    </OaFormDialog>
   </div>
 </template>
 
@@ -75,7 +76,6 @@ import { systemApi } from '@/api/system'
 const treeData = ref([])
 const dialogVisible = ref(false)
 const dialogTitle = ref('新增部门')
-const formRef = ref()
 const selectedDept = ref(null) // 当前选中的部门
 
 // 父部门选择框选项
@@ -154,21 +154,19 @@ const handleDelete = async (data) => {
   }
 }
 
-const handleSubmit = async () => {
-  await formRef.value.validate()
-  try {
-    if (form.id) {
-      await systemApi.updateDept(form.id, form)
-      ElMessage.success('更新成功')
-    } else {
-      await systemApi.createDept(form)
-      ElMessage.success('新增成功')
-    }
-    dialogVisible.value = false
-    loadData()
-  } catch (e) {
-    console.error('保存部门失败', e)
+const handleSubmit = async (formData) => {
+  if (formData.id) {
+    await systemApi.updateDept(formData.id, formData)
+    return '更新成功'
+  } else {
+    await systemApi.createDept(formData)
+    return '新增成功'
   }
+}
+
+const handleSuccess = (msg) => {
+  ElMessage.success(msg || '操作成功')
+  loadData()
 }
 
 onMounted(() => {

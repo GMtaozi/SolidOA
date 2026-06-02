@@ -52,26 +52,27 @@
     </el-card>
 
     <!-- 用户表单弹窗 -->
-    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="500px" class="cyber-dialog">
-      <el-form ref="formRef" :model="form" :rules="rules" label-width="80px" class="cyber-form">
-        <el-form-item label="用户名" prop="username">
-          <el-input v-model="form.username" :disabled="!!form.id" class="cyber-input" />
-        </el-form-item>
-        <el-form-item label="姓名" prop="realName">
-          <el-input v-model="form.realName" class="cyber-input" />
-        </el-form-item>
-        <el-form-item label="手机号" prop="mobile">
-          <el-input v-model="form.mobile" class="cyber-input" />
-        </el-form-item>
-        <el-form-item label="邮箱" prop="email">
-          <el-input v-model="form.email" class="cyber-input" />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button class="cyber-btn" @click="dialogVisible = false">取消</el-button>
-        <el-button class="cyber-btn primary" type="primary" @click="handleSubmit">确定</el-button>
-      </template>
-    </el-dialog>
+    <OaFormDialog
+      v-model="dialogVisible"
+      :title="dialogTitle"
+      :model="form"
+      :rules="rules"
+      :on-submit="handleSubmit"
+      @success="handleSuccess"
+    >
+      <el-form-item label="用户名" prop="username">
+        <el-input v-model="form.username" :disabled="!!form.id" class="cyber-input" />
+      </el-form-item>
+      <el-form-item label="姓名" prop="realName">
+        <el-input v-model="form.realName" class="cyber-input" />
+      </el-form-item>
+      <el-form-item label="手机号" prop="mobile">
+        <el-input v-model="form.mobile" class="cyber-input" />
+      </el-form-item>
+      <el-form-item label="邮箱" prop="email">
+        <el-input v-model="form.email" class="cyber-input" />
+      </el-form-item>
+    </OaFormDialog>
   </div>
 </template>
 
@@ -109,7 +110,6 @@ const columns = [
 
 const dialogVisible = ref(false)
 const dialogTitle = ref('新增用户')
-const formRef = ref()
 const form = reactive({
   id: null,
   username: '',
@@ -221,22 +221,18 @@ const handleResetPassword = async (row) => {
   }
 }
 
-const handleSubmit = async () => {
-  try {
-    await formRef.value.validate()
-  } catch {
-    return
-  }
-
-  if (form.id) {
-    await systemApi.updateUser(form.id, form)
-    ElMessage.success('更新成功')
+const handleSubmit = async (formData) => {
+  if (formData.id) {
+    await systemApi.updateUser(formData.id, formData)
+    return '更新成功'
   } else {
-    await systemApi.createUser(form)
-    ElMessage.success('新增成功')
+    await systemApi.createUser(formData)
+    return '新增成功'
   }
+}
 
-  dialogVisible.value = false
+const handleSuccess = (msg) => {
+  ElMessage.success(msg || '操作成功')
   loadData()
 }
 

@@ -5,17 +5,19 @@
 import OaButton from './OaButton/index.vue'
 import OaCard from './OaCard/index.vue'
 import OaDialog from './OaDialog/index.vue'
+import OaFormDialog from './OaFormDialog/index.vue'
 import OaStatusBadge from './OaStatusBadge/index.vue'
 import OaTable from './OaTable/index.vue'
 import OaApprovalCard from './OaApprovalCard/index.vue'
 import OaApprovalFlow from './OaApprovalFlow/index.vue'
 
-const components = [OaButton, OaCard, OaDialog, OaStatusBadge, OaTable, OaApprovalCard, OaApprovalFlow]
+const components = [OaButton, OaCard, OaDialog, OaFormDialog, OaStatusBadge, OaTable, OaApprovalCard, OaApprovalFlow]
 
 export {
   OaButton,
   OaCard,
   OaDialog,
+  OaFormDialog,
   OaStatusBadge,
   OaTable,
   OaApprovalCard,

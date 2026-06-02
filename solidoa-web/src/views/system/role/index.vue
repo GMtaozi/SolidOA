@@ -38,29 +38,30 @@
     </el-card>
 
     <!-- 角色表单弹窗 -->
-    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="500px" class="cyber-dialog">
-      <el-form ref="formRef" :model="form" :rules="rules" label-width="80px" class="cyber-form">
-        <el-form-item label="角色名称" prop="name">
-          <el-input v-model="form.name" class="cyber-input" />
-        </el-form-item>
-        <el-form-item label="角色编码" prop="code">
-          <el-input v-model="form.code" class="cyber-input" />
-        </el-form-item>
-        <el-form-item label="描述" prop="description">
-          <el-input v-model="form.description" type="textarea" :rows="3" class="cyber-input" />
-        </el-form-item>
-        <el-form-item label="状态" prop="status">
-          <el-radio-group v-model="form.status">
-            <el-radio :label="1">启用</el-radio>
-            <el-radio :label="0">禁用</el-radio>
-          </el-radio-group>
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button class="cyber-btn" @click="dialogVisible = false">取消</el-button>
-        <el-button class="cyber-btn primary" type="primary" @click="handleSubmit">确定</el-button>
-      </template>
-    </el-dialog>
+    <OaFormDialog
+      v-model="dialogVisible"
+      :title="dialogTitle"
+      :model="form"
+      :rules="rules"
+      :on-submit="handleSubmit"
+      @success="handleSuccess"
+    >
+      <el-form-item label="角色名称" prop="name">
+        <el-input v-model="form.name" class="cyber-input" />
+      </el-form-item>
+      <el-form-item label="角色编码" prop="code">
+        <el-input v-model="form.code" class="cyber-input" />
+      </el-form-item>
+      <el-form-item label="描述" prop="description">
+        <el-input v-model="form.description" type="textarea" :rows="3" class="cyber-input" />
+      </el-form-item>
+      <el-form-item label="状态" prop="status">
+        <el-radio-group v-model="form.status">
+          <el-radio :label="1">启用</el-radio>
+          <el-radio :label="0">禁用</el-radio>
+        </el-radio-group>
+      </el-form-item>
+    </OaFormDialog>
 
     <!-- 权限配置弹窗 -->
     <el-dialog v-model="permissionVisible" title="配置权限" width="500px" class="cyber-dialog">
@@ -103,7 +104,6 @@ const columns = [
 const dialogVisible = ref(false)
 const permissionVisible = ref(false)
 const dialogTitle = ref('新增角色')
-const formRef = ref()
 const treeRef = ref()
 
 const form = reactive({
@@ -210,27 +210,19 @@ const handleDelete = async (row) => {
   }
 }
 
-const handleSubmit = async () => {
-  try {
-    await formRef.value.validate()
-  } catch {
-    return
+const handleSubmit = async (formData) => {
+  if (formData.id) {
+    await systemApi.updateRole(formData.id, formData)
+    return '更新成功'
+  } else {
+    await systemApi.createRole(formData)
+    return '新增成功'
   }
+}
 
-  try {
-    if (form.id) {
-      await systemApi.updateRole(form.id, form)
-      ElMessage.success('更新成功')
-    } else {
-      await systemApi.createRole(form)
-      ElMessage.success('新增成功')
-    }
-    dialogVisible.value = false
-    loadData()
-  } catch (error) {
-    console.error('保存角色失败', error)
-    ElMessage.error('保存失败')
-  }
+const handleSuccess = (msg) => {
+  ElMessage.success(msg || '操作成功')
+  loadData()
 }
 
 onMounted(() => {
