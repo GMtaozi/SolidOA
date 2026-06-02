@@ -19,48 +19,49 @@
       </div>
 
       <div class="table-wrapper">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>采购单号</th>
-              <th>申请日期</th>
-              <th>采购类型</th>
-              <th>申请事由</th>
-              <th>期望交付日期</th>
-              <th>总金额</th>
-              <th>状态</th>
-              <th>操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="row in tableData" :key="row.id">
-              <td class="mono">{{ row.purchaseNo }}</td>
-              <td class="mono">{{ row.applyDate }}</td>
-              <td>
-                <span class="type-badge" :class="getTypeClass(row.purchaseType)">
-                  {{ typeMap[row.purchaseType] || row.purchaseType }}
-                </span>
-              </td>
-              <td class="reason-cell">{{ row.reason }}</td>
-              <td class="mono">{{ row.deliveryDate }}</td>
-              <td class="money">¥{{ formatMoney(row.totalAmount) }}</td>
-              <td>
-                <span class="status-badge" :class="getStatusClass(row.status)">
-                  <span class="status-dot"></span>
-                  {{ getStatusText(row.status) }}
-                </span>
-              </td>
-              <td class="action-cell">
-                <button class="action-btn view" @click="handleView(row)">查看</button>
-                <button v-if="row.status === 'PENDING' && activeTab === 'my'" class="action-btn cancel" @click="handleCancel(row)">撤回</button>
-                <button v-if="activeTab === 'pending'" class="action-btn approve" @click="handleApprove(row)">审批</button>
-              </td>
-            </tr>
-            <tr v-if="tableData.length === 0">
-              <td colspan="8" class="empty-cell"><span class="empty-text">暂无数据</span></td>
-            </tr>
-          </tbody>
-        </table>
+        <OaTable
+          :data="tableData"
+          :columns="columns"
+          :total="total"
+          :page="query.page"
+          :size="query.size"
+          @update:page="p => { query.page = p; loadData() }"
+          @update:size="s => { query.size = s; query.page = 1; loadData() }"
+        >
+          <template #purchaseType="{ row }">
+            <span class="type-badge" :class="getTypeClass(row.purchaseType)">
+              {{ typeMap[row.purchaseType] || row.purchaseType }}
+            </span>
+          </template>
+          <template #totalAmount="{ row }">
+            <span class="money">¥{{ formatMoney(row.totalAmount) }}</span>
+          </template>
+          <template #status="{ row }">
+            <OaStatusBadge
+              :type="getBadgeType(row.status)"
+              :text="getStatusText(row.status)"
+            />
+          </template>
+          <template #actions="{ row }">
+            <OaButton variant="ghost" size="small" @click="handleView(row)">查看</OaButton>
+            <OaButton
+              v-if="row.status === 'PENDING' && activeTab === 'my'"
+              variant="danger"
+              size="small"
+              @click="handleCancel(row)"
+            >
+              撤回
+            </OaButton>
+            <OaButton
+              v-if="activeTab === 'pending'"
+              variant="primary"
+              size="small"
+              @click="handleApprove(row)"
+            >
+              审批
+            </OaButton>
+          </template>
+        </OaTable>
       </div>
     </div>
 
@@ -207,6 +208,15 @@
               </tbody>
             </table>
           </div>
+
+          <!-- 审批流程图（V2.0 接入 State Machine） -->
+          <OaApprovalCard
+            v-if="currentDetail && currentDetail.id"
+            title="审批流程"
+            business-type="PURCHASE"
+            :business-id="currentDetail.id"
+            class="detail-flow-card"
+          />
         </div>
         <div class="dialog-footer" v-if="activeTab === 'pending' && currentDetail.status === 'PENDING'">
           <button class="cyber-btn" @click="detailVisible = false">关闭</button>
@@ -228,10 +238,28 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 
 const activeTab = ref('my')
 const tableData = ref([])
+const total = ref(0)
+const query = reactive({ page: 1, size: 10 })
 const dialogVisible = ref(false)
 const detailVisible = ref(false)
 const isSubmitting = ref(false)
 const currentDetail = ref({})
+
+// 表格列定义
+const columns = [
+  { prop: 'purchaseNo', label: '采购单号', width: 160 },
+  { prop: 'applyDate', label: '申请日期', width: 120 },
+  { prop: 'purchaseType', label: '采购类型', width: 110 },
+  { prop: 'reason', label: '申请事由', minWidth: 200 },
+  { prop: 'deliveryDate', label: '期望交付日期', width: 130 },
+  { prop: 'totalAmount', label: '总金额', width: 120 },
+  { prop: 'status', label: '状态', width: 110 }
+]
+
+// 状态 -> OaStatusBadge type
+const getBadgeType = (status) => ({
+  PENDING: 'warning', APPROVED: 'success', REJECTED: 'danger', CANCELLED: 'info'
+}[status] || 'default')
 
 const typeMap = { OFFICE: '办公用品', EXPERIMENT: '实验耗材', OTHER: '其他' }
 
@@ -282,8 +310,10 @@ const removeItem = (index) => {
 
 const loadData = async () => {
   try {
-    const res = activeTab.value === 'my' ? await workflowApi.getPurchaseList({}) : await workflowApi.getMyTasks()
-    tableData.value = res.data?.data?.records || res.data?.data || []
+    const res = activeTab.value === 'my' ? await workflowApi.getPurchaseList(query) : await workflowApi.getMyTasks(query)
+    const data = res.data?.data
+    tableData.value = data?.records || data || []
+    total.value = data?.total || tableData.value.length
   } catch (error) { console.error('加载数据失败', error) }
 }
 

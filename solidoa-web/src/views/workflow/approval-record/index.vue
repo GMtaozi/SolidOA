@@ -95,9 +95,12 @@
 
         <div class="progress-section">
           <h4>审批进度</h4>
-          <el-steps :active="currentRecord.completedNodes" finish-status="success" align-center>
-            <el-step v-for="node in flowData" :key="node.nodeOrder" :title="node.nodeName" :description="node.approverName" />
-          </el-steps>
+          <OaApprovalFlow
+            v-if="mappedFlowData && mappedFlowData.length > 0"
+            :nodes="mappedFlowData"
+            :current-node-order="currentNodeOrder"
+          />
+          <el-empty v-else description="暂无审批节点" :image-size="60" />
         </div>
 
         <div class="node-section" v-if="nodeList.length > 0">
@@ -134,6 +137,22 @@ const detailVisible = ref(false)
 const currentRecord = ref(null)
 const flowData = ref([])
 const nodeList = ref([])
+const currentNodeOrder = computed(() => {
+  // 找到第一个 PENDING 节点的 order
+  const pending = flowData.value.find(n => n.status === 'PENDING')
+  return pending ? (pending.order || pending.nodeOrder) : -1
+})
+// 字段映射：approval-record 老 API 返回 nodeOrder/nodeName，OaApprovalFlow 期望 order/name
+const mappedFlowData = computed(() => flowData.value.map(n => ({
+  id: n.id,
+  order: n.order ?? n.nodeOrder,
+  name: n.name ?? n.nodeName,
+  status: n.status,
+  approverName: n.approverName,
+  approverId: n.approverId,
+  approvedTime: n.approvedTime ?? n.operateTime,
+  comment: n.comment
+})))
 
 const queryParams = reactive({
   pageNum: 1,

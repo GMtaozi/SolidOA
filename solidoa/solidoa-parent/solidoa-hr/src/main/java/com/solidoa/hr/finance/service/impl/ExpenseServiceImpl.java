@@ -34,6 +34,9 @@ public class ExpenseServiceImpl implements ExpenseService {
     @Autowired
     private PaymentLogMapper paymentLogMapper;
 
+    @Autowired
+    private com.solidoa.common.client.WorkflowClient workflowClient;
+
     @Override
     @Transactional
     public Long create(ExpenseForm form, Long userId, Long deptId) {
@@ -65,8 +68,19 @@ public class ExpenseServiceImpl implements ExpenseService {
         expense.setProcessInstanceId(processInstanceId);
 
         expenseMapper.insert(expense);
+        // Sprint 3.4 修复：同步写审批节点
+        syncApprovalNode("EXPENSE", expense.getId(), userId);
         log.info("创建报销单: id={}, no={}, amount={}", expense.getId(), expense.getExpenseNo(), form.getAmount());
         return expense.getId();
+    }
+
+    private void syncApprovalNode(String businessType, Long businessId, Long applicantId) {
+        try {
+            workflowClient.createApprovalNodes(businessType, businessId, applicantId);
+            log.debug("审批节点同步成功: {}#{}", businessType, businessId);
+        } catch (Exception e) {
+            log.warn("审批节点同步失败（不影响主流程）: {}#{}, reason={}", businessType, businessId, e.getMessage());
+        }
     }
 
     @Override

@@ -23,7 +23,7 @@
         @current-change="handleNodeClick"
         class="cyber-tree"
       >
-        <template #default="{ node, data }">
+        <template #default="{ data }">
           <span class="tree-node">
             <span class="node-icon">
               <el-icon><OfficeBuilding /></el-icon>

@@ -45,6 +45,9 @@ public class RepairCardServiceImpl implements RepairCardService {
     @Autowired
     private AttendanceMapper attendanceMapper;
 
+    @Autowired
+    private com.solidoa.common.client.WorkflowClient workflowClient;
+
     @Override
     @Transactional
     public Long create(RepairForm form, Long userId) {
@@ -71,6 +74,9 @@ public class RepairCardServiceImpl implements RepairCardService {
 
         // 更新补卡统计
         updateStatistics(userId, form.getRepairDate());
+
+        // Sprint 3.4 修复：同步写审批节点到 oa_workflow 库（远程 Feign）
+        syncApprovalNode("REPAIR_CARD", repair.getId(), userId);
 
         log.info("创建补卡申请: userId={}, repairDate={}, type={}",
             userId, form.getRepairDate(), form.getRepairType());
@@ -148,6 +154,19 @@ public class RepairCardServiceImpl implements RepairCardService {
     /**
      * 更新补卡统计
      */
+    /**
+     * 同步写审批节点（Feign 远程调 workflow-service）
+     * 失败不抛出（审批节点写入失败不影响主业务）
+     */
+    private void syncApprovalNode(String businessType, Long businessId, Long applicantId) {
+        try {
+            workflowClient.createApprovalNodes(businessType, businessId, applicantId);
+            log.debug("审批节点同步成功: {}#{}", businessType, businessId);
+        } catch (Exception e) {
+            log.warn("审批节点同步失败（不影响主流程）: {}#{}, reason={}", businessType, businessId, e.getMessage());
+        }
+    }
+
     private void updateStatistics(Long userId, LocalDate repairDate) {
         updateStatistics(userId, repairDate, 1);
     }

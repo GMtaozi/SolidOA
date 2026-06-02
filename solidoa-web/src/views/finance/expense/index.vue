@@ -53,47 +53,41 @@
 
       <!-- 数据表格 -->
       <div class="table-wrapper">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>报销单号</th>
-              <th>出差区域</th>
-              <th>出差时间</th>
-              <th>时长</th>
-              <th>报销金额</th>
-              <th>状态</th>
-              <th>操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="row in tableData" :key="row.id">
-              <td class="mono">{{ row.expenseNo }}</td>
-              <td class="region-cell">{{ row.travelRegions || '-' }}</td>
-              <td class="mono time-cell">{{ row.travelStartDate }} ~ {{ row.travelEndDate }}</td>
-              <td class="mono highlight">{{ row.duration || 0 }}天</td>
-              <td class="mono amount">{{ formatAmount(row.amount) }}</td>
-              <td>
-                <span class="status-badge" :class="getStatusClass(row.status)">
-                  <span class="status-dot"></span>
-                  {{ getStatusText(row.status) }}
-                </span>
-              </td>
-              <td class="action-cell">
-                <button class="action-btn view" @click="handleView(row)">查看</button>
-                <button v-if="row.status === 'PENDING' && activeTab === 'my'" class="action-btn cancel" @click="handleCancel(row)">撤回</button>
-                <button v-if="activeTab === 'pending'" class="action-btn approve" @click="handleApprove(row)">审批</button>
-              </td>
-            </tr>
-            <tr v-if="tableData.length === 0">
-              <td colspan="7" class="empty-cell">
-                <div class="empty-state">
-                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none"><rect x="2" y="3" width="20" height="18" rx="2" stroke="currentColor" stroke-width="2"/><line x1="2" y1="9" x2="22" y2="9" stroke="currentColor" stroke-width="2"/></svg>
-                  <span>暂无报销记录</span>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+        <OaTable
+          :data="tableData"
+          :columns="columns"
+          :total="total"
+          :page="query.page"
+          :size="query.size"
+          @update:page="p => { query.page = p; loadData() }"
+          @update:size="s => { query.size = s; query.page = 1; loadData() }"
+        >
+          <template #status="{ row }">
+            <OaStatusBadge
+              :type="getBadgeType(row.status)"
+              :text="getStatusText(row.status)"
+            />
+          </template>
+          <template #actions="{ row }">
+            <OaButton variant="ghost" size="small" @click="handleView(row)">查看</OaButton>
+            <OaButton
+              v-if="row.status === 'PENDING' && activeTab === 'my'"
+              variant="danger"
+              size="small"
+              @click="handleCancel(row)"
+            >
+              撤回
+            </OaButton>
+            <OaButton
+              v-if="activeTab === 'pending'"
+              variant="primary"
+              size="small"
+              @click="handleApprove(row)"
+            >
+              审批
+            </OaButton>
+          </template>
+        </OaTable>
       </div>
 
       <!-- 分页 -->
@@ -331,6 +325,15 @@
                 {{ getStatusText(currentRow?.status) }}
               </span>
             </div>
+
+            <!-- 审批流程图（V2.0 接入 State Machine） -->
+            <OaApprovalCard
+              v-if="currentRow && currentRow.id"
+              title="审批流程"
+              business-type="EXPENSE"
+              :business-id="currentRow.id"
+              class="detail-flow-card"
+            />
             <div class="detail-amount">
               <span class="currency">¥</span>
               <span class="amount">{{ formatAmount(currentRow?.amount) }}</span>
@@ -427,6 +430,21 @@ const detailVisible = ref(false)
 const isSubmitting = ref(false)
 const uploading = ref(false)
 const currentRow = ref(null)
+
+// 表格列定义
+const columns = [
+  { prop: 'expenseNo', label: '报销单号', width: 160 },
+  { prop: 'travelRegions', label: '出差区域', minWidth: 140 },
+  { prop: 'travelDate', label: '出差时间', width: 220, formatter: (val, row) => `${row.travelStartDate || ''} ~ ${row.travelEndDate || ''}` },
+  { prop: 'duration', label: '时长', width: 100, formatter: (val) => `${val || 0}天` },
+  { prop: 'amount', label: '报销金额', width: 130, formatter: (val) => formatAmount(val) },
+  { prop: 'status', label: '状态', width: 110 }
+]
+
+// 状态 -> OaStatusBadge type
+const getBadgeType = (status) => ({
+  PENDING: 'warning', APPROVED: 'success', REJECTED: 'danger', CANCELLED: 'info', PAID: 'primary'
+}[status] || 'default')
 const flowData = ref(null)
 const showRegionPicker = ref(false)
 const uploadRef = ref(null)
@@ -607,12 +625,13 @@ const loadData = async () => {
   try {
     let res
     if (activeTab.value === 'my') {
-      res = await hrApi.getExpenseList({ page: page.value, size: pageSize.value })
+      res = await hrApi.getExpenseList(query)
     } else {
-      res = await workflowApi.getMyTasks()
+      res = await workflowApi.getMyTasks(query)
     }
-    tableData.value = res.data?.data?.records || res.data?.data || []
-    total.value = res.data?.data?.total || 0
+    const data = res.data?.data
+    tableData.value = data?.records || res.data?.data || []
+    total.value = data?.total || 0
   } catch (error) {
     console.error('加载数据失败', error)
   }

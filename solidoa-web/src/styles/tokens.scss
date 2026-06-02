@@ -1,0 +1,170 @@
+// ============================================================================
+// SolidOA Design Tokens — 单一真理源 (Single Source of Truth)
+// 来源: DESIGN.md / DESIGN.json
+// 修改此文件 = 全站视觉变更
+// ============================================================================
+
+// === 颜色（语义化） ===
+$primary:        #60A5FA; // 云青蓝（主色）
+$primary-deep:   #3B82F6; // 深主色（按下/激活）
+$primary-light:  #93C5FD; // 浅主色（hover/渐变）
+$primary-tint:   rgba(96, 165, 250, 0.08); // 极浅主色（背景）
+$primary-tint-2: rgba(96, 165, 250, 0.15); // 浅主色（hover 背景）
+
+$success: #34D399; // 薄荷绿（通过/成功）
+$success-deep: #2E8B57;
+$warning: #FBBF24; // 蜂蜜黄（待审/警告）
+$warning-deep: #D97706;
+$danger:  #FCA5A5; // 蜜桃红（驳回/失败）
+$danger-deep:  #DC2626;
+$info:    #94A3B8; // 雾灰
+$purple:  #A78BFA; // 紫色（点缀）
+
+// === 背景 ===
+$bg-page:   #f7f5f2; // 页面背景
+$bg-card:   #ffffff; // 卡片/弹窗
+$bg-input:  #f9f9f9; // 输入框/表头
+$bg-hover:  #FAFAFA; // 悬停
+$bg-mask:   rgba(0, 0, 0, 0.5); // 遮罩
+
+// === 文字 ===
+$text-1: #3B3B3B; // 主文字
+$text-2: #6B7280; // 次文字
+$text-3: #9CA3AF; // 辅助
+$text-placeholder: #c0c4cc;
+$text-on-primary: #ffffff; // 主色上的文字
+
+// === 边框/分隔 ===
+$border:    #F0EDE9; // 主要边框
+$divider:   #E5E7EB; // 浅分隔
+$border-input: #dcdfe6;
+
+// === 圆角（来自 DESIGN.md） ===
+$radius-sm:   8px;  // Input/Tag
+$radius-md:   12px; // Button/Nav
+$radius-lg:   16px; // Card/Dialog
+$radius-pill: 40px; // 头像/胶囊
+
+// === 字号（5 级） ===
+$fz-display: 32px; // 仪表盘数字
+$fz-h1:      24px; // 页面大标题
+$fz-h2:      18px; // 卡片标题
+$fz-h3:      16px; // 区块标题
+$fz-body:    14px; // 正文
+$fz-aux:     12px; // 辅助
+$fz-mini:    11px; // 微小
+
+// === 字重 ===
+$fw-regular:  400;
+$fw-medium:   500;
+$fw-semibold: 600;
+$fw-bold:     700;
+
+// === 行高 ===
+$lh-tight:  1.2;
+$lh-snug:   1.4;
+$lh-normal: 1.6;
+
+// === 阴影 ===
+$shadow-sm:  0 1px 2px rgba(15, 23, 42, 0.04);
+$shadow-base: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.02);
+$shadow-hover: 0 20px 35px -12px rgba(0, 0, 0, 0.1);
+$shadow-lg:   0 10px 25px rgba(15, 23, 42, 0.08);
+$shadow-xl:   0 20px 40px rgba(15, 23, 42, 0.12);
+
+// === 间距（8 栅格） ===
+$gap-xs:  4px;
+$gap-sm:  8px;
+$gap-md:  12px;
+$gap-lg:  16px;
+$gap-xl:  20px;
+$gap-2xl: 24px;
+$gap-3xl: 32px;
+$gap-4xl: 40px;
+$gap-5xl: 48px;
+
+$pad-page: 24px 32px; // 页面内边距
+$gap-card: 20px;      // 卡片间距
+
+// === 动画 ===
+$motion-fast: 150ms;
+$motion-base: 250ms;
+$motion-slow: 400ms;
+$ease-standard: cubic-bezier(0.4, 0.0, 0.2, 1);
+$ease-out:      cubic-bezier(0.25, 0.1, 0.25, 1);
+
+// === 字体栈 ===
+$font-family-base: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+
+// ============================================================================
+// CSS 变量层（运行时可用，JS 可读取）
+// ============================================================================
+:root {
+  // 颜色
+  --oa-primary: #{$primary};
+  --oa-primary-deep: #{$primary-deep};
+  --oa-primary-light: #{$primary-light};
+  --oa-primary-tint: #{$primary-tint};
+  --oa-primary-tint-2: #{$primary-tint-2};
+  --oa-success: #{$success};
+  --oa-success-deep: #{$success-deep};
+  --oa-warning: #{$warning};
+  --oa-warning-deep: #{$warning-deep};
+  --oa-danger:  #{$danger};
+  --oa-danger-deep:  #{$danger-deep};
+  --oa-info:    #{$info};
+  --oa-purple:  #{$purple};
+
+  // 背景
+  --oa-bg-page:   #{$bg-page};
+  --oa-bg-card:   #{$bg-card};
+  --oa-bg-input:  #{$bg-input};
+  --oa-bg-hover:  #{$bg-hover};
+  --oa-bg-mask:   #{$bg-mask};
+
+  // 文字
+  --oa-text-1: #{$text-1};
+  --oa-text-2: #{$text-2};
+  --oa-text-3: #{$text-3};
+  --oa-text-placeholder: #{$text-placeholder};
+  --oa-text-on-primary: #{$text-on-primary};
+
+  // 边框
+  --oa-border:    #{$border};
+  --oa-divider:   #{$divider};
+  --oa-border-input: #{$border-input};
+
+  // 圆角
+  --oa-radius-sm:   #{$radius-sm};
+  --oa-radius-md:   #{$radius-md};
+  --oa-radius-lg:   #{$radius-lg};
+  --oa-radius-pill: #{$radius-pill};
+
+  // 字号
+  --oa-fz-display: #{$fz-display};
+  --oa-fz-h1:      #{$fz-h1};
+  --oa-fz-h2:      #{$fz-h2};
+  --oa-fz-h3:      #{$fz-h3};
+  --oa-fz-body:    #{$fz-body};
+  --oa-fz-aux:     #{$fz-aux};
+
+  // 阴影
+  --oa-shadow-sm:   #{$shadow-sm};
+  --oa-shadow-base: #{$shadow-base};
+  --oa-shadow-hover: #{$shadow-hover};
+  --oa-shadow-lg:   #{$shadow-lg};
+  --oa-shadow-xl:   #{$shadow-xl};
+
+  // 间距
+  --oa-gap-card: #{$gap-card};
+  --oa-pad-page: #{$pad-page};
+
+  // 动画
+  --oa-motion-fast: #{$motion-fast};
+  --oa-motion-base: #{$motion-base};
+  --oa-motion-slow: #{$motion-slow};
+  --oa-ease-standard: #{$ease-standard};
+
+  // 字体
+  --oa-font-family-base: #{$font-family-base};
+}

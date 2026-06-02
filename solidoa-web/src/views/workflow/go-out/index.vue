@@ -19,42 +19,41 @@
       </div>
 
       <div class="table-wrapper" role="region" aria-label="外出申请列表">
-        <table class="data-table" role="table">
-          <thead>
-            <tr role="row">
-              <th role="columnheader">外出单号</th>
-              <th role="columnheader">外出日期</th>
-              <th role="columnheader">外出地点</th>
-              <th role="columnheader">开始时间</th>
-              <th role="columnheader">结束时间</th>
-              <th role="columnheader">状态</th>
-              <th role="columnheader">操作</th>
-            </tr>
-          </thead>
-          <tbody role="rowgroup">
-            <tr v-for="row in tableData" :key="row.id" role="row">
-              <td class="mono" role="cell">{{ row.outNo }}</td>
-              <td class="mono" role="cell">{{ row.outDate }}</td>
-              <td role="cell">{{ row.destination }}</td>
-              <td class="mono" role="cell">{{ formatTime(row.startTime) }}</td>
-              <td class="mono" role="cell">{{ formatTime(row.endTime) }}</td>
-              <td role="cell">
-                <span class="status-badge" :class="getStatusClass(row.status)" role="status" :aria-label="getStatusText(row.status)">
-                  <span class="status-dot" aria-hidden="true"></span>
-                  {{ getStatusText(row.status) }}
-                </span>
-              </td>
-              <td class="action-cell" role="cell">
-                <button class="action-btn view" @click="handleView(row)" :aria-label="`查看 ${row.outNo}`">查看</button>
-                <button v-if="row.status === 'PENDING' && activeTab === 'my'" class="action-btn cancel" @click="handleCancel(row)" :aria-label="`撤回 ${row.outNo}`">撤回</button>
-                <button v-if="activeTab === 'pending'" class="action-btn approve" @click="handleApprove(row)" :aria-label="`审批 ${row.outNo}`">审批</button>
-              </td>
-            </tr>
-            <tr v-if="tableData.length === 0" role="row">
-              <td colspan="7" class="empty-cell" role="cell"><span class="empty-text" role="status">暂无数据</span></td>
-            </tr>
-          </tbody>
-        </table>
+        <OaTable
+          :data="tableData"
+          :columns="columns"
+          :total="total"
+          :page="query.page"
+          :size="query.size"
+          @update:page="p => { query.page = p; loadData() }"
+          @update:size="s => { query.size = s; query.page = 1; loadData() }"
+        >
+          <template #status="{ row }">
+            <OaStatusBadge
+              :type="getBadgeType(row.status)"
+              :text="getStatusText(row.status)"
+            />
+          </template>
+          <template #actions="{ row }">
+            <OaButton variant="ghost" size="small" @click="handleView(row)">查看</OaButton>
+            <OaButton
+              v-if="row.status === 'PENDING' && activeTab === 'my'"
+              variant="danger"
+              size="small"
+              @click="handleCancel(row)"
+            >
+              撤回
+            </OaButton>
+            <OaButton
+              v-if="activeTab === 'pending'"
+              variant="primary"
+              size="small"
+              @click="handleApprove(row)"
+            >
+              审批
+            </OaButton>
+          </template>
+        </OaTable>
       </div>
 
       <nav class="pagination" v-if="total > 0" role="navigation" aria-label="分页导航">
@@ -188,6 +187,15 @@
               <span class="detail-value reason">{{ currentDetail.approverComment }}</span>
             </div>
           </div>
+
+          <!-- 审批流程图（V2.0 接入 State Machine） -->
+          <OaApprovalCard
+            v-if="currentDetail && currentDetail.id"
+            title="审批流程"
+            business-type="GO_OUT"
+            :business-id="currentDetail.id"
+            class="detail-flow-card"
+          />
         </div>
         <div class="dialog-footer" v-if="activeTab === 'pending' && currentDetail.status === 'PENDING'">
           <button class="cyber-btn" @click="detailVisible = false">关闭</button>
@@ -212,11 +220,27 @@ import { Plus } from '@element-plus/icons-vue'
 
 const activeTab = ref('my')
 const tableData = ref([])
+const query = reactive({ page: 1, size: 10 })
 const dialogVisible = ref(false)
 const detailVisible = ref(false)
 const isSubmitting = ref(false)
 const uploading = ref(false)
 const currentDetail = ref({})
+
+// 表格列定义
+const columns = [
+  { prop: 'outNo', label: '外出单号', width: 160 },
+  { prop: 'outDate', label: '外出日期', width: 120 },
+  { prop: 'destination', label: '外出地点', minWidth: 180 },
+  { prop: 'startTime', label: '开始时间', width: 160, formatter: (val) => formatTime(val) },
+  { prop: 'endTime', label: '结束时间', width: 160, formatter: (val) => formatTime(val) },
+  { prop: 'status', label: '状态', width: 110 }
+]
+
+// 状态 -> OaStatusBadge type
+const getBadgeType = (status) => ({
+  PENDING: 'warning', APPROVED: 'success', REJECTED: 'danger', CANCELLED: 'info'
+}[status] || 'default')
 const pageNum = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
@@ -270,10 +294,11 @@ const escapeHtml = (str) => {
 const loadData = async () => {
   try {
     const res = activeTab.value === 'my'
-      ? await hrApi.getGoOutList({ pageNum: pageNum.value, pageSize: pageSize.value })
+      ? await hrApi.getGoOutList({ pageNum: query.page, pageSize: query.size })
       : await workflowApi.getMyTasks()
-    tableData.value = res.data?.data?.records || res.data?.data || []
-    total.value = res.data?.data?.total || 0
+    const data = res.data?.data
+    tableData.value = data?.records || res.data?.data || []
+    total.value = data?.total || 0
   } catch (error) {
     console.error('加载数据失败', error)
   }

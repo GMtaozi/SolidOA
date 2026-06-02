@@ -25,4 +25,16 @@ public interface WorkflowClient {
 
     @GetMapping("/leave/simple/{id}")
     Result<LeaveDTO> getLeaveSimple(@PathVariable("id") Long id);
+
+    /**
+     * 初始化业务审批节点（Sprint 3.4 新增：供 hr 端 Feign 远程调用）
+     * @param businessType REPAIR_CARD / OVERTIME / BUSINESS_TRIP / GO_OUT / EXPENSE
+     * @param businessId 业务单据 ID
+     * @param applicantId 申请人 ID
+     */
+    @PostMapping("/approval/nodes/create")
+    Result<Void> createApprovalNodes(
+            @RequestParam("businessType") String businessType,
+            @RequestParam("businessId") Long businessId,
+            @RequestParam("applicantId") Long applicantId);
 }

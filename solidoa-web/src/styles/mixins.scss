@@ -1,0 +1,152 @@
+// ============================================================================
+// SolidOA SCSS Mixins — 复用样式片段
+// 依赖: tokens.scss
+// 注意: 不能用 @use tokens 会与 vite additionalData 注入冲突; 采用 :global 访问方式
+// 改用: 内部直接重新定义所需的 token (与 tokens.scss 保持同步)
+// ============================================================================
+
+// === 卡片基础样式 ===
+@mixin card-base {
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.02);
+  transition: box-shadow 250ms cubic-bezier(0.4, 0.0, 0.2, 1);
+
+  &:hover {
+    box-shadow: 0 20px 35px -12px rgba(0, 0, 0, 0.1);
+  }
+}
+
+// === 主按钮（蓝渐变） ===
+@mixin btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #60A5FA 0%, #93C5FD 100%);
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 250ms cubic-bezier(0.4, 0.0, 0.2, 1);
+  box-shadow: 0 4px 12px rgba(96, 165, 250, 0.15);
+
+  &:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(96, 165, 250, 0.15);
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(0);
+    background: #3B82F6;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+// === 幽灵按钮 ===
+@mixin btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 20px;
+  border: 1px solid #dcdfe6;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #3B3B3B;
+  font-size: 14px;
+  font-weight: 400;
+  cursor: pointer;
+  transition: all 250ms cubic-bezier(0.4, 0.0, 0.2, 1);
+
+  &:hover {
+    border-color: #60A5FA;
+    color: #60A5FA;
+    background: rgba(96, 165, 250, 0.08);
+  }
+}
+
+// === 输入框焦点光晕 ===
+@mixin focus-glow {
+  transition: box-shadow 250ms cubic-bezier(0.4, 0.0, 0.2, 1);
+  &:focus,
+  &:focus-within {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.15);
+  }
+}
+
+// === 单行省略 ===
+@mixin truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// === 多行省略（默认 2 行） ===
+@mixin ellipsis($lines: 2) {
+  display: -webkit-box;
+  -webkit-line-clamp: $lines;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+// === 自定义滚动条 ===
+@mixin scrollbar {
+  &::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: #dcdfe6;
+    border-radius: 4px;
+    &:hover {
+      background: #9CA3AF;
+    }
+  }
+}
+
+// === Flex 居中 ===
+@mixin flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+// === Flex 两端对齐 ===
+@mixin flex-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+// === 状态徽章通用 ===
+@mixin status-badge($color, $bg-color) {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 10px;
+  border-radius: 40px;
+  background: $bg-color;
+  color: $color;
+  font-size: 12px;
+  font-weight: 500;
+
+  &::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: $color;
+  }
+}
+

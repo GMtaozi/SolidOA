@@ -19,44 +19,44 @@
       </div>
 
       <div class="table-wrapper">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>出差单号</th>
-              <th>申请日期</th>
-              <th>出差事由</th>
-              <th>行程数</th>
-              <th>总时长(天)</th>
-              <th>出行人</th>
-              <th>状态</th>
-              <th>操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="row in tableData" :key="row.id">
-              <td class="mono">{{ row.tripNo }}</td>
-              <td class="mono">{{ row.startDate }} ~ {{ row.endDate }}</td>
-              <td class="reason-cell">{{ row.reason }}</td>
-              <td class="center">1</td>
-              <td class="mono highlight">{{ row.days }}</td>
-              <td>{{ row.companions || '-' }}</td>
-              <td>
-                <span class="status-badge" :class="getStatusClass(row.status)">
-                  <span class="status-dot"></span>
-                  {{ row.statusName || getStatusText(row.status) }}
-                </span>
-              </td>
-              <td class="action-cell">
-                <button class="action-btn view" @click="handleView(row)">查看</button>
-                <button v-if="row.status === 'PENDING' && activeTab === 'my'" class="action-btn cancel" @click="handleCancel(row)">撤回</button>
-                <button v-if="activeTab === 'pending'" class="action-btn approve" @click="handleApprove(row)">审批</button>
-              </td>
-            </tr>
-            <tr v-if="tableData.length === 0">
-              <td colspan="8" class="empty-cell"><span class="empty-text">暂无数据</span></td>
-            </tr>
-          </tbody>
-        </table>
+        <OaTable
+          :data="tableData"
+          :columns="columns"
+          :total="total"
+          :page="query.page"
+          :size="query.size"
+          @update:page="p => { query.page = p; loadData() }"
+          @update:size="s => { query.size = s; query.page = 1; loadData() }"
+        >
+          <template #reason="{ row }">
+            <span class="reason-cell">{{ row.reason }}</span>
+          </template>
+          <template #status="{ row }">
+            <OaStatusBadge
+              :type="getBadgeType(row.status)"
+              :text="row.statusName || getStatusText(row.status)"
+            />
+          </template>
+          <template #actions="{ row }">
+            <OaButton variant="ghost" size="small" @click="handleView(row)">查看</OaButton>
+            <OaButton
+              v-if="row.status === 'PENDING' && activeTab === 'my'"
+              variant="danger"
+              size="small"
+              @click="handleCancel(row)"
+            >
+              撤回
+            </OaButton>
+            <OaButton
+              v-if="activeTab === 'pending'"
+              variant="primary"
+              size="small"
+              @click="handleApprove(row)"
+            >
+              审批
+            </OaButton>
+          </template>
+        </OaTable>
       </div>
     </div>
 
@@ -226,6 +226,15 @@
               </div>
             </div>
           </div>
+
+          <!-- 审批流程图（V2.0 接入 State Machine） -->
+          <OaApprovalCard
+            v-if="currentDetail && currentDetail.id"
+            title="审批流程"
+            business-type="BUSINESS_TRIP"
+            :business-id="currentDetail.id"
+            class="detail-flow-card"
+          />
         </div>
         <div class="dialog-footer" v-if="activeTab === 'pending' && currentDetail.status === 'PENDING'">
           <button class="cyber-btn" @click="detailVisible = false">关闭</button>
@@ -248,10 +257,31 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 
 const activeTab = ref('my')
 const tableData = ref([])
+const total = ref(0)
+const query = reactive({ page: 1, size: 10 })
 const dialogVisible = ref(false)
 const detailVisible = ref(false)
 const isSubmitting = ref(false)
 const currentDetail = ref({})
+
+// 表格列定义
+const columns = [
+  { prop: 'tripNo', label: '出差单号', width: 160 },
+  { prop: 'startDate', label: '申请日期', width: 220, formatter: (val, row) => `${row.startDate || ''} ~ ${row.endDate || ''}` },
+  { prop: 'reason', label: '出差事由', minWidth: 200 },
+  { prop: 'tripCount', label: '行程数', width: 80 },
+  { prop: 'days', label: '总时长(天)', width: 110 },
+  { prop: 'companions', label: '出行人', minWidth: 120 },
+  { prop: 'status', label: '状态', width: 110 }
+]
+
+// 状态 -> OaStatusBadge type
+const getBadgeType = (status) => ({
+  PENDING: 'warning',
+  APPROVED: 'success',
+  REJECTED: 'danger',
+  CANCELLED: 'info'
+}[status] || 'default')
 
 const transportMap = { PLANE: '飞机', TRAIN: '火车', BUS: '汽车', OTHER: '其他' }
 
@@ -426,11 +456,11 @@ const removeItinerary = (index) => {
 const loadData = async () => {
   console.log('[出差] 开始加载')
   try {
-    const res = activeTab.value === 'my' ? await hrApi.getBusinessTripList({}) : await workflowApi.getMyTasks()
+    const res = activeTab.value === 'my' ? await hrApi.getBusinessTripList(query) : await workflowApi.getMyTasks(query)
     console.log('[出差] res.data:', res.data)
-    // 注意：res 是 axios response，res.data 是后端响应，其中 res.data.data 才是实际数据
-    tableData.value = res.data?.data?.records || res.data?.records || []
-    console.log('[出差] tableData:', tableData.value)
+    const data = res.data?.data
+    tableData.value = data?.records || res.data?.records || []
+    total.value = data?.total || tableData.value.length
   } catch (error) {
     console.error('[出差] 加载失败', error)
   }

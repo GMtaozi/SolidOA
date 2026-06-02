@@ -40,6 +40,9 @@ public class OvertimeServiceImpl implements OvertimeService {
     @Autowired
     private OvertimeBreakMapper overtimeBreakMapper;
 
+    @Autowired
+    private com.solidoa.common.client.WorkflowClient workflowClient;
+
     /** 调休有效期（月数） */
     private static final int BREAK_VALIDITY_MONTHS = 6;
 
@@ -91,9 +94,23 @@ public class OvertimeServiceImpl implements OvertimeService {
         overtime.setCreateTime(LocalDateTime.now());
 
         overtimeMapper.insert(overtime);
+        // Sprint 3.4 修复：同步写审批节点
+        syncApprovalNode("OVERTIME", overtime.getId(), userId);
         log.info("创建加班申请: userId={}, overtimeNo={}, hours={}", userId, overtimeNo, hours);
 
         return overtime.getId();
+    }
+
+    /**
+     * 同步写审批节点（Feign 远程调 workflow-service）
+     */
+    private void syncApprovalNode(String businessType, Long businessId, Long applicantId) {
+        try {
+            workflowClient.createApprovalNodes(businessType, businessId, applicantId);
+            log.debug("审批节点同步成功: {}#{}", businessType, businessId);
+        } catch (Exception e) {
+            log.warn("审批节点同步失败（不影响主流程）: {}#{}, reason={}", businessType, businessId, e.getMessage());
+        }
     }
 
     @Override

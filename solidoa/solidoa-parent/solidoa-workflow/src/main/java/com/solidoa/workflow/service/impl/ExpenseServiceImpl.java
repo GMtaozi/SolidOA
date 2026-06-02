@@ -9,6 +9,8 @@ import com.solidoa.workflow.mapper.ExpenseMapper;
 import com.solidoa.workflow.mapper.ApprovalRecordMapper;
 import com.solidoa.workflow.service.ExpenseService;
 import com.solidoa.workflow.service.ApprovalNodeService;
+import com.solidoa.workflow.service.UniversalApprovalService;
+import com.solidoa.workflow.enums.ApprovalEvent;
 import com.solidoa.workflow.vo.ExpenseVO;
 import com.solidoa.common.vo.PageVO;
 import com.solidoa.common.dto.PageDTO;
@@ -42,6 +44,9 @@ public class ExpenseServiceImpl implements ExpenseService {
 
     @Autowired
     private ApprovalNodeService approvalNodeService;
+
+    @Autowired
+    private UniversalApprovalService universalService;
 
     @Override
     @Transactional
@@ -90,35 +95,11 @@ public class ExpenseServiceImpl implements ExpenseService {
     @Override
     @Transactional
     public void approve(Long id, String approveResult, String comment, Long approverId) {
-        Expense expense = expenseMapper.selectById(id);
-        if (expense == null) {
-            throw new BusinessException("报销单不存在");
-        }
+        // [A1 第二步] 委托 UniversalApprovalService 走状态机 + 乐观锁
+        ApprovalEvent event = "APPROVED".equals(approveResult) ? ApprovalEvent.APPROVE : ApprovalEvent.REJECT;
+        universalService.fire("EXPENSE", id, approverId, event, comment);
 
-        if (!"PENDING".equals(expense.getStatus())) {
-            throw new BusinessException("当前状态不允许审批");
-        }
-
-        // 审批人身份校验：必须是当前审批人或申请人
-        if (expense.getCurrentApproverId() == null || !expense.getCurrentApproverId().equals(approverId)) {
-            throw new BusinessException("您不是该申请的当前审批人，无权审批");
-        }
-
-        String newStatus = "APPROVED".equals(approveResult) ? "APPROVED" : "REJECTED";
-        expense.setStatus(newStatus);
-
-        int rows = expenseMapper.update(
-            expense,
-            new LambdaQueryWrapper<Expense>()
-                .eq(Expense::getId, id)
-                .eq(Expense::getStatus, "PENDING")
-                .eq(Expense::getVersion, expense.getVersion())
-        );
-
-        if (rows == 0) {
-            throw new BusinessException("数据已被其他操作修改，请刷新后重试");
-        }
-
+        // 业务副作用：记录审批历史
         ApprovalRecord record = new ApprovalRecord();
         record.setBusinessType("EXPENSE");
         record.setBusinessId(id);
@@ -128,16 +109,20 @@ public class ExpenseServiceImpl implements ExpenseService {
         record.setCreateTime(java.time.LocalDateTime.now());
         approvalRecordMapper.insert(record);
 
-        ApprovalMessage message = new ApprovalMessage();
-        message.setBusinessType("EXPENSE");
-        message.setBusinessId(id);
-        message.setApproverId(approverId);
-        message.setActionType(approveResult);
-        message.setComment(comment);
-        message.setApplyUserId(expense.getUserId());
-        message.setBusinessNo(expense.getExpenseNo());
-        message.setCreateTime(java.time.LocalDateTime.now());
-        messageProducer.sendApprovalMessage(message);
+        // 业务副作用：发送消息通知
+        Expense expense = expenseMapper.selectById(id);
+        if (expense != null) {
+            ApprovalMessage message = new ApprovalMessage();
+            message.setBusinessType("EXPENSE");
+            message.setBusinessId(id);
+            message.setApproverId(approverId);
+            message.setActionType(approveResult);
+            message.setComment(comment);
+            message.setApplyUserId(expense.getUserId());
+            message.setBusinessNo(expense.getExpenseNo());
+            message.setCreateTime(java.time.LocalDateTime.now());
+            messageProducer.sendApprovalMessage(message);
+        }
 
         log.info("审批报销单: id={}, result={}, approver={}", id, approveResult, approverId);
     }
@@ -145,29 +130,15 @@ public class ExpenseServiceImpl implements ExpenseService {
     @Override
     @Transactional
     public void addSign(Long id, Long addUserId, Long currentApproverId) {
-        Expense expense = expenseMapper.selectById(id);
-        if (expense == null) {
-            throw new BusinessException("报销单不存在");
-        }
-
-        // 检查循环审批：A -> B -> A
+        // [A1 第二步] 循环审批检查保留（调用方）
         if (hasCircularReference("EXPENSE", id, addUserId, currentApproverId)) {
             throw new BusinessException("检测到循环审批，禁止此操作");
         }
 
-        expense.setCurrentApproverId(addUserId);
-        int rows = expenseMapper.update(
-            expense,
-            new LambdaQueryWrapper<Expense>()
-                .eq(Expense::getId, id)
-                .eq(Expense::getStatus, "PENDING")
-                .eq(Expense::getVersion, expense.getVersion())
-        );
+        // [A1 第二步] 委托 UniversalApprovalService：换审批人
+        universalService.transfer("EXPENSE", id, currentApproverId, addUserId, null, "加签给用户: " + addUserId);
 
-        if (rows == 0) {
-            throw new BusinessException("数据已被其他操作修改，请刷新后重试");
-        }
-
+        // 业务副作用：记录加签历史
         ApprovalRecord record = new ApprovalRecord();
         record.setBusinessType("EXPENSE");
         record.setBusinessId(id);
@@ -183,16 +154,15 @@ public class ExpenseServiceImpl implements ExpenseService {
     @Override
     @Transactional
     public void transfer(Long id, Long toUserId, String reason, Long currentApproverId) {
-        Expense expense = expenseMapper.selectById(id);
-        if (expense == null) {
-            throw new BusinessException("报销单不存在");
-        }
-
-        // 检查循环审批
+        // [A1 第二步] 循环审批检查保留（调用方）
         if (hasCircularReference("EXPENSE", id, toUserId, currentApproverId)) {
             throw new BusinessException("检测到循环审批，禁止此操作");
         }
 
+        // [A1 第二步] 委托 UniversalApprovalService：换审批人
+        universalService.transfer("EXPENSE", id, currentApproverId, toUserId, null, reason);
+
+        // 业务副作用：记录转交历史
         ApprovalRecord record = new ApprovalRecord();
         record.setBusinessType("EXPENSE");
         record.setBusinessId(id);
@@ -201,19 +171,6 @@ public class ExpenseServiceImpl implements ExpenseService {
         record.setComment("转交给用户: " + toUserId + ", 原因: " + reason);
         record.setCreateTime(java.time.LocalDateTime.now());
         approvalRecordMapper.insert(record);
-
-        expense.setCurrentApproverId(toUserId);
-        int rows = expenseMapper.update(
-            expense,
-            new LambdaQueryWrapper<Expense>()
-                .eq(Expense::getId, id)
-                .eq(Expense::getStatus, "PENDING")
-                .eq(Expense::getVersion, expense.getVersion())
-        );
-
-        if (rows == 0) {
-            throw new BusinessException("数据已被其他操作修改，请刷新后重试");
-        }
 
         log.info("报销单转交: id={}, toUserId={}", id, toUserId);
     }

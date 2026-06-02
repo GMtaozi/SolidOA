@@ -64,42 +64,46 @@
       <div
         v-for="item in filteredList"
         :key="item.id"
-        class="approval-card"
+        class="approval-card-wrap"
         @click="handleCardClick(item)"
       >
-        <div class="card-header">
-          <component :is="typeIcons[item.businessType] || Check" class="biz-icon" />
-          <span class="biz-type">{{ typeNames[item.businessType] }}</span>
-          <span class="card-status" :class="getStatusClass(item.status)">
-            {{ statusNames[item.status] }}
-          </span>
-        </div>
-        <div class="card-body">
-          <div class="info-row">
-            <span class="info-label">申请人</span>
-            <span class="info-value">{{ item.userName || '未知' }}</span>
+        <OaCard :hoverable="true" :padded="false">
+          <div class="card-header">
+            <component :is="typeIcons[item.businessType] || Check" class="biz-icon" />
+            <span class="biz-type">{{ typeNames[item.businessType] }}</span>
+            <OaStatusBadge
+              :type="getBadgeType(item.status)"
+              :text="statusNames[item.status]"
+              :dot="false"
+            />
           </div>
-          <div class="info-row">
-            <span class="info-label">申请时间</span>
-            <span class="info-value">{{ formatDate(item.createTime) }}</span>
+          <div class="card-body">
+            <div class="info-row">
+              <span class="info-label">申请人</span>
+              <span class="info-value">{{ item.userName || '未知' }}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">申请时间</span>
+              <span class="info-value">{{ formatDate(item.createTime) }}</span>
+            </div>
+            <div v-if="item.reason" class="info-row">
+              <span class="info-label">申请理由</span>
+              <span class="info-value reason">{{ item.reason }}</span>
+            </div>
           </div>
-          <div v-if="item.reason" class="info-row">
-            <span class="info-label">申请理由</span>
-            <span class="info-value reason">{{ item.reason }}</span>
+          <!-- 审批操作按钮 - 仅当前待办节点审批人有权限 -->
+          <div v-if="item.status === 'PENDING' && item.canApprove === true" class="card-actions">
+            <OaButton variant="primary" size="small" @click.stop="quickApprove(item)">
+              <Check />通过
+            </OaButton>
+            <OaButton variant="danger" size="small" @click.stop="quickReject(item)">
+              <Close />拒绝
+            </OaButton>
+            <OaButton variant="ghost" size="small" @click.stop="showMoreActions(item)">
+              <MoreFilled />
+            </OaButton>
           </div>
-        </div>
-        <!-- 审批操作按钮 - 仅当前待办节点审批人有权限 -->
-        <div v-if="item.status === 'PENDING' && item.canApprove === true" class="card-actions">
-          <button class="quick-action approve" @click.stop="quickApprove(item)">
-            <Check />通过
-          </button>
-          <button class="quick-action reject" @click.stop="quickReject(item)">
-            <Close />拒绝
-          </button>
-          <button class="quick-action" @click.stop="showMoreActions(item)">
-            <MoreFilled />
-          </button>
-        </div>
+        </OaCard>
       </div>
     </div>
 
@@ -308,16 +312,14 @@ const setStatus = (status) => {
   loadData()
 }
 
-const getStatusClass = (status) => {
-  const map = {
-    PENDING: 'warning',
-    APPROVED: 'success',
-    REJECTED: 'danger',
-    COMPLETED: 'success',
-    CANCELLED: 'info'
-  }
-  return map[status] || ''
-}
+// 状态 -> OaStatusBadge type
+const getBadgeType = (status) => ({
+  PENDING: 'warning',
+  APPROVED: 'success',
+  REJECTED: 'danger',
+  COMPLETED: 'success',
+  CANCELLED: 'info'
+}[status] || 'default')
 
 const formatDate = (dateStr) => {
   if (!dateStr) return ''

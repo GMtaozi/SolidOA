@@ -8,6 +8,8 @@ import com.solidoa.common.exception.BusinessException;
 import com.solidoa.common.util.CryptoUtil;
 import com.solidoa.workflow.service.StampService;
 import com.solidoa.workflow.service.ApprovalNodeService;
+import com.solidoa.workflow.service.UniversalApprovalService;
+import com.solidoa.workflow.enums.ApprovalEvent;
 import com.solidoa.workflow.vo.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,6 +35,7 @@ public class StampServiceImpl implements StampService {
     private final StampRecordMapper stampRecordMapper;
     private final ApprovalRecordMapper approvalRecordMapper;
     private final ApprovalNodeService approvalNodeService;
+    private final UniversalApprovalService universalService;
 
     /** 用印类型映射 */
     private static final Map<String, String> STAMP_TYPE_MAP = new HashMap<>();
@@ -107,48 +110,16 @@ public class StampServiceImpl implements StampService {
     @Override
     @Transactional
     public void approveStamp(Long id, ApproveForm form, Long approverId) {
-        Stamp stamp = stampMapper.selectById(id);
-        if (stamp == null) {
-            throw new BusinessException(404, "用印申请不存在");
-        }
-
-        // 状态校验：只有 PENDING 状态才能审批
-        if (!"PENDING".equals(stamp.getStatus())) {
-            throw new BusinessException(403, "当前状态不允许审批，请刷新后重试");
-        }
-
-        // 审批人身份校验：必须是当前审批人或申请人
-        if (stamp.getCurrentApproverId() == null || !stamp.getCurrentApproverId().equals(approverId)) {
-            throw new BusinessException(403, "您不是该申请的当前审批人，无权审批");
-        }
-
-        // 保存审批记录
-        saveApprovalRecord(id, "STAMP", approverId, form.getApproveType(), form.getComment());
-
-        String newStatus;
-        if ("APPROVE".equals(form.getApproveType())) {
-            newStatus = "APPROVED";
-        } else if ("REJECT".equals(form.getApproveType())) {
-            newStatus = "REJECTED";
-        } else {
+        // 验证审批类型
+        if (!"APPROVE".equals(form.getApproveType()) && !"REJECT".equals(form.getApproveType())) {
             throw new BusinessException(400, "无效的审批类型");
         }
+        // [A1 第二步] 委托 UniversalApprovalService 走状态机 + 乐观锁
+        ApprovalEvent event = "APPROVE".equals(form.getApproveType()) ? ApprovalEvent.APPROVE : ApprovalEvent.REJECT;
+        universalService.fire("STAMP", id, approverId, event, form.getComment());
 
-        // 使用乐观锁更新：检查状态和版本号
-        stamp.setStatus(newStatus);
-        stamp.setUpdateTime(LocalDateTime.now());
-
-        int rows = stampMapper.update(
-            stamp,
-            new LambdaQueryWrapper<Stamp>()
-                .eq(Stamp::getId, id)
-                .eq(Stamp::getStatus, "PENDING")  // 乐观锁：确保状态未被修改
-                .eq(Stamp::getVersion, stamp.getVersion())
-        );
-
-        if (rows == 0) {
-            throw new BusinessException(400, "数据已被其他操作修改，请刷新后重试");
-        }
+        // 业务副作用：保存审批记录
+        saveApprovalRecord(id, "STAMP", approverId, form.getApproveType(), form.getComment());
 
         log.info("审批用印申请: id={}, approverId={}, type={}", id, approverId, form.getApproveType());
     }
@@ -156,33 +127,10 @@ public class StampServiceImpl implements StampService {
     @Override
     @Transactional
     public void cancelStamp(Long id, Long userId) {
-        Stamp stamp = stampMapper.selectById(id);
-        if (stamp == null) {
-            throw new BusinessException(404, "用印申请不存在");
-        }
-        if (!stamp.getUserId().equals(userId)) {
-            throw new BusinessException(400, "只能撤回自己的申请");
-        }
-        if (!"PENDING".equals(stamp.getStatus())) {
-            throw new BusinessException(403, "当前状态不允许撤回");
-        }
+        // [A1 第二步] 委托 UniversalApprovalService 走状态机 + 乐观锁
+        universalService.fire("STAMP", id, userId, ApprovalEvent.WITHDRAW, "申请人撤回");
 
-        stamp.setStatus("CANCELLED");
-        stamp.setUpdateTime(LocalDateTime.now());
-
-        // 使用乐观锁更新
-        int rows = stampMapper.update(
-            stamp,
-            new LambdaQueryWrapper<Stamp>()
-                .eq(Stamp::getId, id)
-                .eq(Stamp::getStatus, "PENDING")
-                .eq(Stamp::getVersion, stamp.getVersion())
-        );
-
-        if (rows == 0) {
-            throw new BusinessException(400, "数据已被其他操作修改，请刷新后重试");
-        }
-
+        // 业务副作用：保存撤回记录
         saveApprovalRecord(id, "STAMP", userId, "CANCEL", "撤回申请");
         log.info("撤回用印申请: id={}, userId={}", id, userId);
     }

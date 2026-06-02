@@ -9,45 +9,38 @@
 
       <!-- 数据表格 -->
       <div class="table-wrapper">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>类型</th>
-              <th>业务编号</th>
-              <th>抄送时间</th>
-              <th>状态</th>
-              <th>操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="row in tableData" :key="row.id">
-              <td>
-                <span class="type-badge" :class="getTypeClass(row.businessType)">
-                  {{ row.businessTypeName }}
-                </span>
-              </td>
-              <td class="mono">{{ row.businessId }}</td>
-              <td class="mono">{{ formatTime(row.createTime) }}</td>
-              <td>
-                <span class="status-dot" :class="{ unread: !row.isRead }"></span>
-                {{ row.isRead ? '已读' : '未读' }}
-              </td>
-              <td class="action-cell">
-                <button class="action-btn view" @click="handleView(row)">查看</button>
-                <button
-                  v-if="!row.isRead"
-                  class="action-btn read"
-                  @click="handleMarkRead(row)"
-                >标记已读</button>
-              </td>
-            </tr>
-            <tr v-if="tableData.length === 0">
-              <td colspan="5" class="empty-cell">
-                <span class="empty-text">暂无抄送记录</span>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+        <OaTable
+          :data="tableData"
+          :columns="columns"
+          :total="total"
+          :page="query.page"
+          :size="query.size"
+          @update:page="p => { query.page = p; loadData() }"
+          @update:size="s => { query.size = s; query.page = 1; loadData() }"
+        >
+          <template #businessType="{ row }">
+            <span class="type-badge" :class="getTypeClass(row.businessType)">
+              {{ row.businessTypeName }}
+            </span>
+          </template>
+          <template #isRead="{ row }">
+            <OaStatusBadge
+              :type="row.isRead ? 'success' : 'warning'"
+              :text="row.isRead ? '已读' : '未读'"
+            />
+          </template>
+          <template #actions="{ row }">
+            <OaButton variant="ghost" size="small" @click="handleView(row)">查看</OaButton>
+            <OaButton
+              v-if="!row.isRead"
+              variant="primary"
+              size="small"
+              @click="handleMarkRead(row)"
+            >
+              标记已读
+            </OaButton>
+          </template>
+        </OaTable>
       </div>
 
       <!-- 分页 -->
@@ -90,26 +83,12 @@
           </div>
           <div class="info-section" v-if="flowData">
             <h4 class="section-title">审批流程</h4>
-            <div class="flow-list">
-              <div
-                v-for="(node, idx) in flowData.nodes"
-                :key="idx"
-                class="flow-item"
-                :class="node.status.toLowerCase()"
-              >
-                <div class="flow-icon">
-                  <el-icon v-if="node.status === 'APPROVED'"><Check /></el-icon>
-                  <el-icon v-else-if="node.status === 'REJECTED'"><Close /></el-icon>
-                  <el-icon v-else><Clock /></el-icon>
-                </div>
-                <div class="flow-info">
-                  <div class="flow-name">{{ node.name }}</div>
-                  <div class="flow-mode" v-if="node.mode">{{ node.mode === 'ALL' ? '会签' : '或签' }}</div>
-                </div>
-                <div class="flow-time" v-if="node.approvedTime">{{ formatTime(node.approvedTime) }}</div>
-                <div class="flow-comment" v-if="node.comment">{{ node.comment }}</div>
-              </div>
-            </div>
+            <OaApprovalFlow
+              v-if="flowData.nodes && flowData.nodes.length > 0"
+              :nodes="flowData.nodes"
+              :current-node-order="currentNodeOrder"
+            />
+            <el-empty v-else description="暂无审批节点" :image-size="60" />
           </div>
         </div>
         <div class="dialog-footer">
@@ -134,6 +113,28 @@ const total = ref(0)
 const detailVisible = ref(false)
 const currentRow = ref(null)
 const flowData = ref(null)
+const currentNodeOrder = computed(() => {
+  const data = flowData.value
+  if (!data?.nodes) return -1
+  const pending = data.nodes.find(n => n.status === 'PENDING')
+  return pending ? pending.order : -1
+})
+
+// OaTable 分页 v-model 适配（page/size 双向绑定）
+const query = reactive({
+  get page() { return page.value },
+  set page(v) { page.value = v },
+  get size() { return pageSize.value },
+  set size(v) { pageSize.value = v }
+})
+
+// 表格列定义
+const columns = [
+  { prop: 'businessType', label: '类型', width: 110 },
+  { prop: 'businessId', label: '业务编号', minWidth: 160 },
+  { prop: 'createTime', label: '抄送时间', width: 180, formatter: (val) => formatTime(val) },
+  { prop: 'isRead', label: '状态', width: 100 }
+]
 
 const totalPages = computed(() => Math.ceil(total.value / pageSize.value) || 1)
 

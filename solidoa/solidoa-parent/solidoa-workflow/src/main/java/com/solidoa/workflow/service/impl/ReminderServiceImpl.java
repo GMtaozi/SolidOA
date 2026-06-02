@@ -78,8 +78,8 @@ public class ReminderServiceImpl implements ReminderService {
             reminderRecordMapper.updateById(record);
         }
 
-        // TODO: 发送钉钉/短信/邮件通知
-        log.info("催办成功: businessType={}, businessId={}, userId={}, count={}",
+        // B1 催办: 3 通道通知 (Sprint 4.6 集成钉钉)
+        log.info("[B1] 催办: type={}, id={}, userId={}, count={}",
             businessType, businessId, requestUserId, count);
     }
 

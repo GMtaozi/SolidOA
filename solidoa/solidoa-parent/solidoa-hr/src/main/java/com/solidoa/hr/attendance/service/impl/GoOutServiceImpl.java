@@ -32,6 +32,9 @@ public class GoOutServiceImpl implements GoOutService {
     @Autowired
     private GoOutMapper goOutMapper;
 
+    @Autowired
+    private com.solidoa.common.client.WorkflowClient workflowClient;
+
     @Override
     @Transactional
     public Long create(GoOutForm form, Long userId) {
@@ -42,8 +45,19 @@ public class GoOutServiceImpl implements GoOutService {
         goOut.setOutNo(generateOutNo());
 
         goOutMapper.insert(goOut);
+        // Sprint 3.4 修复：同步写审批节点
+        syncApprovalNode("GO_OUT", goOut.getId(), userId);
         log.info("创建外出申请: userId={}, outNo={}", userId, goOut.getOutNo());
         return goOut.getId();
+    }
+
+    private void syncApprovalNode(String businessType, Long businessId, Long applicantId) {
+        try {
+            workflowClient.createApprovalNodes(businessType, businessId, applicantId);
+            log.debug("审批节点同步成功: {}#{}", businessType, businessId);
+        } catch (Exception e) {
+            log.warn("审批节点同步失败（不影响主流程）: {}#{}, reason={}", businessType, businessId, e.getMessage());
+        }
     }
 
     @Override

@@ -299,4 +299,57 @@ public class SalaryServiceImpl implements SalaryService {
         int seq = Integer.parseInt(maxNo.substring(prefix.length())) + 1;
         return prefix + String.format("%04d", seq);
     }
+
+    @Override
+    @Transactional
+    public void confirmSalary(Long id, Long userId) {
+        Salary salary = salaryMapper.selectById(id);
+        if (salary == null) {
+            throw new BusinessException("工资单不存在");
+        }
+        if (!userId.equals(salary.getUserId())) {
+            throw new BusinessException("只能确认自己的工资条");
+        }
+        if (!"PAID".equals(salary.getStatus())) {
+            throw new BusinessException("只有已发放的工资条才能确认");
+        }
+        if (salary.getConfirmed() != null && salary.getConfirmed() == 1) {
+            throw new BusinessException("工资条已确认，无需重复确认");
+        }
+
+        salary.setConfirmed(1);
+        salary.setConfirmTime(LocalDateTime.now());
+        salary.setUpdateTime(LocalDateTime.now());
+        salaryMapper.updateById(salary);
+        log.info("工资条确认: id={}, userId={}", id, userId);
+    }
+
+    @Override
+    @Transactional
+    public void disputeSalary(Long id, Long userId, String reason) {
+        if (reason == null || reason.isBlank()) {
+            throw new BusinessException("异议原因不能为空");
+        }
+
+        Salary salary = salaryMapper.selectById(id);
+        if (salary == null) {
+            throw new BusinessException("工资单不存在");
+        }
+        if (!userId.equals(salary.getUserId())) {
+            throw new BusinessException("只能对自己的工资条提出异议");
+        }
+        if (!"PAID".equals(salary.getStatus())) {
+            throw new BusinessException("只有已发放的工资条才能提出异议");
+        }
+        if (salary.getConfirmed() != null && salary.getConfirmed() == 1) {
+            throw new BusinessException("工资条已确认，无法提出异议");
+        }
+
+        salary.setDisputeReason(reason);
+        salary.setDisputeTime(LocalDateTime.now());
+        salary.setDisputeStatus("PENDING");
+        salary.setUpdateTime(LocalDateTime.now());
+        salaryMapper.updateById(salary);
+        log.info("工资条异议: id={}, userId={}, reason={}", id, userId, reason);
+    }
 }

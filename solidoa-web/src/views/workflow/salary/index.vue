@@ -42,61 +42,52 @@
 
       <!-- 数据表格 -->
       <div class="table-wrapper">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>工资单号</th>
-              <th>申请日期</th>
-              <th>薪资期间</th>
-              <th>发薪日期</th>
-              <th>发薪类型</th>
-              <th>发放人数</th>
-              <th>实发合计</th>
-              <th>状态</th>
-              <th>操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="row in tableData" :key="row.id">
-              <td class="mono">{{ row.salaryNo }}</td>
-              <td class="mono">{{ row.applyDate }}</td>
-              <td>{{ row.salaryMonth }}</td>
-              <td class="mono">{{ row.payDate || '-' }}</td>
-              <td>{{ row.payTypeName || '-' }}</td>
-              <td class="center">{{ row.employeeCount || 0 }} 人</td>
-              <td class="money">¥{{ formatMoney(row.totalNetSalary) }}</td>
-              <td>
-                <span class="status-badge" :class="getStatusClass(row.status)">
-                  <span class="status-dot"></span>
-                  {{ getStatusText(row.status) }}
-                </span>
-              </td>
-              <td class="action-cell">
-                <button class="action-btn view" @click="handleView(row)">查看</button>
-                <button
-                  v-if="row.status === 'DRAFT' && activeTab === 'my'"
-                  class="action-btn submit"
-                  @click="handleSubmit(row)"
-                >提交</button>
-                <button
-                  v-if="row.status === 'PENDING' && activeTab === 'my'"
-                  class="action-btn cancel"
-                  @click="handleCancel(row)"
-                >撤回</button>
-                <button
-                  v-if="activeTab === 'pending' && row.status === 'PENDING'"
-                  class="action-btn approve"
-                  @click="handleApprove(row)"
-                >审批</button>
-              </td>
-            </tr>
-            <tr v-if="tableData.length === 0">
-              <td colspan="9" class="empty-cell">
-                <span class="empty-text">暂无数据</span>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+        <OaTable
+          :data="tableData"
+          :columns="columns"
+          :total="total"
+          :page="query.page"
+          :size="query.size"
+          @update:page="p => { query.page = p; loadData() }"
+          @update:size="s => { query.size = s; query.page = 1; loadData() }"
+        >
+          <template #totalNetSalary="{ row }">
+            <span class="money">¥{{ formatMoney(row.totalNetSalary) }}</span>
+          </template>
+          <template #status="{ row }">
+            <OaStatusBadge
+              :type="getBadgeType(row.status)"
+              :text="getStatusText(row.status)"
+            />
+          </template>
+          <template #actions="{ row }">
+            <OaButton variant="ghost" size="small" @click="handleView(row)">查看</OaButton>
+            <OaButton
+              v-if="row.status === 'DRAFT' && activeTab === 'my'"
+              variant="primary"
+              size="small"
+              @click="handleSubmit(row)"
+            >
+              提交
+            </OaButton>
+            <OaButton
+              v-if="row.status === 'PENDING' && activeTab === 'my'"
+              variant="danger"
+              size="small"
+              @click="handleCancel(row)"
+            >
+              撤回
+            </OaButton>
+            <OaButton
+              v-if="activeTab === 'pending' && row.status === 'PENDING'"
+              variant="primary"
+              size="small"
+              @click="handleApprove(row)"
+            >
+              审批
+            </OaButton>
+          </template>
+        </OaTable>
       </div>
 
       <!-- 分页 -->
@@ -309,6 +300,32 @@ const tableData = ref([])
 const total = ref(0)
 const page = ref(1)
 const pageSize = ref(10)
+
+// OaTable 分页适配
+const query = reactive({
+  get page() { return page.value },
+  set page(v) { page.value = v },
+  get size() { return pageSize.value },
+  set size(v) { pageSize.value = v }
+})
+
+// 表格列定义
+const columns = [
+  { prop: 'salaryNo', label: '工资单号', width: 160 },
+  { prop: 'applyDate', label: '申请日期', width: 120 },
+  { prop: 'salaryMonth', label: '薪资期间', width: 110 },
+  { prop: 'payDate', label: '发薪日期', width: 120 },
+  { prop: 'payTypeName', label: '发薪类型', width: 110 },
+  { prop: 'employeeCount', label: '发放人数', width: 110, formatter: (val) => `${val || 0} 人` },
+  { prop: 'totalNetSalary', label: '实发合计', width: 130 },
+  { prop: 'status', label: '状态', width: 110 }
+]
+
+// 状态 -> OaStatusBadge type
+const getBadgeType = (status) => ({
+  DRAFT: 'info', PENDING: 'warning', APPROVED: 'success', REJECTED: 'danger',
+  PAID: 'primary', CANCELLED: 'default'
+}[status] || 'default')
 
 const filters = reactive({
   salaryMonth: ''

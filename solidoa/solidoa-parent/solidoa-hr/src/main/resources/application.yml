@@ -55,6 +55,8 @@ feign:
         readTimeout: 10000
       system-service:
         url: http://localhost:8081
+      workflow-service:
+        url: http://localhost:8082  # Sprint 3.4 新增：hr 端调 workflow 创建审批节点
 
 logging:
   level:

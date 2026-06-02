@@ -49,6 +49,15 @@ public class Salary {
     // 发放信息
     private LocalDateTime paidTime;
 
+    // 确认信息
+    private Integer confirmed;
+    private LocalDateTime confirmTime;
+
+    // 异议信息
+    private String disputeReason;
+    private LocalDateTime disputeTime;
+    private String disputeStatus;
+
     private Long creatorId;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;

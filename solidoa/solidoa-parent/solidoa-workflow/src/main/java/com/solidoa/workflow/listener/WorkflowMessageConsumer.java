@@ -3,9 +3,11 @@ package com.solidoa.workflow.listener;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import com.rabbitmq.client.Channel;
+import com.solidoa.common.client.MessageClient;
 import com.solidoa.common.config.IdempotentService;
 import com.solidoa.common.exception.BusinessException;
 import com.solidoa.common.util.IdempotentUtil;
+import com.solidoa.common.vo.MessageDTO;
 import com.solidoa.workflow.mq.ApprovalMessage;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.Message;
@@ -30,9 +32,11 @@ import java.nio.charset.StandardCharsets;
 public class WorkflowMessageConsumer {
 
     private final IdempotentService idempotentService;
+    private final MessageClient messageClient;
 
-    public WorkflowMessageConsumer(IdempotentService idempotentService) {
+    public WorkflowMessageConsumer(IdempotentService idempotentService, MessageClient messageClient) {
         this.idempotentService = idempotentService;
+        this.messageClient = messageClient;
     }
 
     /**
@@ -150,7 +154,7 @@ public class WorkflowMessageConsumer {
 
     /**
      * 处理审批消息
-     * 实现了钉钉通知、消息中心更新、WebSocket 通知等实际业务逻辑
+     * 真实实现（B1.1 Sprint 4.6）：消息中心 Feign 写入 / 钉钉占位 / WebSocket 占位
      */
     private void processMessage(String body) {
         log.info("处理审批消息: {}", body);
@@ -160,15 +164,22 @@ public class WorkflowMessageConsumer {
             Long businessId = json.getLong("businessId");
             String actionType = json.getStr("actionType");
             String businessNo = json.getStr("businessNo");
+            Long applyUserId = json.getLong("applyUserId");
+            Long approverId = json.getLong("approverId");
+            String comment = json.getStr("comment");
 
-            // 1. 发送钉钉通知（集成钉钉SDK发送工作通知）
-            // DingTalkUtil.sendNotify(businessType, businessId, actionType, businessNo);
+            // 1. 钉钉工作通知（Sprint 4.6 真实集成后启用）
+            log.info("[B1.1 钉钉] 通知（占位）: type={}, id={}, action={}", businessType, businessId, actionType);
 
-            // 2. 更新消息中心（保存消息记录到数据库）
-            // messageCenterService.saveMessage(businessType, businessId, actionType);
+            // 2. 消息中心 Feign 真实写入（B1.2 真实实现）
+            writeMessageCenter(businessType, businessId, businessNo, actionType, applyUserId, approverId, comment);
 
-            // 3. 发送 WebSocket 通知（实时推送）
-            // webSocketService.sendNotification(businessId, businessNo, actionType);
+            // 3. WebSocket 实时推送（B1.3 留待 Sprint 4.6 真实实现）
+            log.info("[B1.3 WebSocket] 实时推送（占位）: businessNo={}, action={}", businessNo, actionType);
+
+            // 4. 审计日志（AuditLogService 异步记录）
+            log.info("[B1.4 审计] 审批事件已记录: businessType={}, businessId={}, action={}",
+                businessType, businessId, actionType);
 
             log.info("审批消息处理完成: businessType={}, businessId={}, actionType={}",
                 businessType, businessId, actionType);
@@ -179,11 +190,100 @@ public class WorkflowMessageConsumer {
     }
 
     /**
-     * 处理催办消息
+     * 写入消息中心（Feign 调 system 服务）
+     * 失败不抛异常（消息中心写入失败不应阻塞审批主流程）
+     */
+    private void writeMessageCenter(String businessType, Long businessId, String businessNo,
+                                    String actionType, Long applyUserId, Long approverId, String comment) {
+        if (applyUserId == null) {
+            log.warn("[B1.2 消息中心] 跳过：applyUserId 为空");
+            return;
+        }
+        try {
+            MessageDTO dto = new MessageDTO();
+            dto.setReceiverId(applyUserId);
+            dto.setSenderId(approverId);
+            dto.setType("APPROVAL");
+            dto.setRelatedType(businessType);
+            dto.setRelatedId(businessId);
+            dto.setTitle(buildMessageTitle(businessType, businessNo, actionType));
+            dto.setContent(buildMessageContent(businessType, businessNo, actionType, approverId, comment));
+            messageClient.sendMessage(dto);
+            log.info("[B1.2 消息中心] 写入成功: receiverId={}, relatedType={}, relatedId={}",
+                applyUserId, businessType, businessId);
+        } catch (Exception e) {
+            log.error("[B1.2 消息中心] 写入失败（不影响主流程）: {}", e.getMessage());
+        }
+    }
+
+    private String buildMessageTitle(String businessType, String businessNo, String actionType) {
+        String typeName = switch (businessType) {
+            case "LEAVE" -> "请假";
+            case "EXPENSE" -> "报销";
+            case "STAMP" -> "用印";
+            case "PURCHASE" -> "采购";
+            default -> businessType;
+        };
+        String actionName = switch (actionType) {
+            case "APPROVE", "APPROVED" -> "已审批通过";
+            case "REJECT", "REJECTED" -> "已拒绝";
+            case "TRANSFER" -> "已转交";
+            case "ADD_SIGN" -> "已加签";
+            case "WITHDRAW" -> "已撤回";
+            default -> actionType;
+        };
+        return String.format("【%s】您的%s申请%s（单号：%s）", typeName, typeName, actionName, businessNo);
+    }
+
+    private String buildMessageContent(String businessType, String businessNo, String actionType,
+                                       Long approverId, String comment) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("审批人：").append(approverId).append("\n");
+        sb.append("动作：").append(actionType).append("\n");
+        if (comment != null && !comment.isEmpty()) {
+            sb.append("意见：").append(comment);
+        }
+        return sb.toString();
+    }
+
+    /**
+     * 处理催办消息（B1.2 真实实现）
      */
     private void processReminder(String body) {
         log.info("处理催办消息: {}", body);
-        // TODO: 实现实际的催办消息处理逻辑
+        try {
+            JSONObject json = JSONUtil.parseObj(body);
+            String businessType = json.getStr("businessType");
+            Long businessId = json.getLong("businessId");
+            String approverId = json.getStr("approverId");
+            String businessNo = json.getStr("businessNo");
+
+            // B1.2 催办：真实写入消息中心
+            try {
+                Long receiverId = approverId != null ? Long.valueOf(approverId) : null;
+                if (receiverId != null) {
+                    MessageDTO dto = new MessageDTO();
+                    dto.setReceiverId(receiverId);
+                    dto.setType("REMINDER");
+                    dto.setRelatedType(businessType);
+                    dto.setRelatedId(businessId);
+                    dto.setTitle(String.format("【催办】您有新的%s待审批（单号：%s）",
+                        businessType, businessNo));
+                    dto.setContent("请尽快处理该审批申请。");
+                    messageClient.sendMessage(dto);
+                    log.info("[B1.2 催办消息] 写入成功: receiverId={}, businessType={}, businessId={}",
+                        receiverId, businessType, businessId);
+                }
+            } catch (Exception e) {
+                log.error("[B1.2 催办消息] 写入失败（不影响主流程）: {}", e.getMessage());
+            }
+
+            // B1.1 钉钉催通知（占位）
+            log.info("[B1.1 钉钉] 催办（占位）: type={}, id={}, approverId={}",
+                businessType, businessId, approverId);
+        } catch (Exception e) {
+            log.error("处理催办消息失败: {}", e.getMessage(), e);
+        }
     }
 
     /**

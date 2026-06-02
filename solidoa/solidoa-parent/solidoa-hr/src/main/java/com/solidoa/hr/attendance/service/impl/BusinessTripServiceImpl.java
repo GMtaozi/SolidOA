@@ -37,6 +37,9 @@ public class BusinessTripServiceImpl implements BusinessTripService {
     @Autowired
     private BusinessTripSubsidyMapper subsidyMapper;
 
+    @Autowired
+    private com.solidoa.common.client.WorkflowClient workflowClient;
+
     @Override
     @Transactional
     public Long createBusinessTrip(BusinessTripForm form, Long userId) {
@@ -71,10 +74,21 @@ public class BusinessTripServiceImpl implements BusinessTripService {
         trip.setUpdateTime(LocalDateTime.now());
 
         businessTripMapper.insert(trip);
+        // Sprint 3.4 修复：同步写审批节点
+        syncApprovalNode("BUSINESS_TRIP", trip.getId(), userId);
         log.info("新建出差申请: tripNo={}, userId={}, destination={}, days={}",
                 tripNo, userId, form.getDestination(), days);
 
         return trip.getId();
+    }
+
+    private void syncApprovalNode(String businessType, Long businessId, Long applicantId) {
+        try {
+            workflowClient.createApprovalNodes(businessType, businessId, applicantId);
+            log.debug("审批节点同步成功: {}#{}", businessType, businessId);
+        } catch (Exception e) {
+            log.warn("审批节点同步失败（不影响主流程）: {}#{}, reason={}", businessType, businessId, e.getMessage());
+        }
     }
 
     @Override

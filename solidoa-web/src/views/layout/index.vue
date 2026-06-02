@@ -207,7 +207,6 @@ const menuGroups = [
   {
     title: '考勤管理',
     items: [
-      { path: '/check', name: '考勤打卡', iconComponent: Check },
       { path: '/leave-balance', name: '假期余额', iconComponent: Calendar },
     ]
   },
@@ -232,10 +231,10 @@ const menuGroups = [
       { path: '/user', name: '用户管理', iconComponent: User },
       { path: '/dept', name: '部门管理', iconComponent: OfficeBuilding },
       { path: '/role', name: '角色权限', iconComponent: Setting },
-      { path: '/shifts', name: '班次管理', iconComponent: Clock },
-      { path: '/attendance-groups', name: '考勤组', iconComponent: Check },
+      { path: '/flow-config', name: '流程配置', iconComponent: Connection },
+      { path: '/stamp-manage', name: '印章管理', iconComponent: Stamp },
+      { path: '/stamp-record', name: '用印记录', iconComponent: DocumentChecked },
       { path: '/holidays', name: '节假日', iconComponent: Calendar },
-      { path: '/attendance-rules', name: '考勤规则', iconComponent: Setting },
       { path: '/leave-types', name: '假期类型', iconComponent: Calendar },
     ]
   }

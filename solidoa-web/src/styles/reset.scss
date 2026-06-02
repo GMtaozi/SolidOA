@@ -1,0 +1,86 @@
+/* ============================================================================
+   SolidOA 全局 Reset — 替代 App.vue 内联 6 行 reset
+   依赖: tokens.scss（已注入 :root CSS 变量）
+   ============================================================================ */
+
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  width: 100%;
+}
+
+body {
+  font-family: var(--oa-font-family-base);
+  font-size: var(--oa-fz-body);
+  color: var(--oa-text-1);
+  background: var(--oa-bg-page);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  line-height: 1.6;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+}
+
+input,
+textarea,
+select {
+  font-family: inherit;
+  font-size: inherit;
+}
+
+img,
+video {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+ul,
+ol {
+  list-style: none;
+}
+
+/* 滚动条全局样式 */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--oa-border-input);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--oa-text-3);
+}
+
+/* 选中文本色 */
+::selection {
+  background: var(--oa-primary-tint-2);
+  color: var(--oa-text-1);
+}

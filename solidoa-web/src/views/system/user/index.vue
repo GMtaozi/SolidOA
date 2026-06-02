@@ -27,39 +27,28 @@
         </el-form-item>
       </el-form>
 
-      <el-table :data="tableData" border class="cyber-table">
-        <el-table-column prop="id" label="ID" width="80" />
-        <el-table-column prop="username" label="用户名" />
-        <el-table-column prop="realName" label="姓名" />
-        <el-table-column prop="mobile" label="手机号" />
-        <el-table-column prop="email" label="邮箱" />
-        <el-table-column prop="status" label="状态" width="100">
-          <template #default="{ row }">
-            <span class="status-badge" :class="row.status === 1 ? 'status-active' : 'status-disabled'">
-              {{ row.status === 1 ? '启用' : '禁用' }}
-            </span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="createTime" label="创建时间" />
-        <el-table-column label="操作" width="280">
-          <template #default="{ row }">
-            <el-button type="primary" link class="cyber-link" @click="handleEdit(row)">编辑</el-button>
-            <el-button type="warning" link class="cyber-link warning" @click="handleResetPassword(row)">重置密码</el-button>
-            <el-button type="danger" link class="cyber-link danger" @click="handleDelete(row)">删除</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-
-      <el-pagination
-        v-model:current-page="pagination.pageNum"
-        v-model:page-size="pagination.pageSize"
+      <OaTable
+        :data="tableData"
+        :columns="columns"
         :total="pagination.total"
-        :page-sizes="[10, 20, 50]"
-        layout="total, sizes, prev, pager, next"
-        @size-change="loadData"
-        @current-change="loadData"
-        class="cyber-pagination"
-      />
+        :page="pagination.pageNum"
+        :size="pagination.pageSize"
+        @update:page="p => { pagination.pageNum = p; loadData() }"
+        @update:size="s => { pagination.pageSize = s; pagination.pageNum = 1; loadData() }"
+      >
+        <template #status="{ row }">
+          <OaStatusBadge
+            :type="row.status === 1 ? 'success' : 'default'"
+            :text="row.status === 1 ? '启用' : '禁用'"
+            :dot="false"
+          />
+        </template>
+        <template #actions="{ row }">
+          <OaButton variant="primary" size="small" @click="handleEdit(row)">编辑</OaButton>
+          <OaButton variant="ghost" size="small" @click="handleResetPassword(row)">重置密码</OaButton>
+          <OaButton variant="danger" size="small" @click="handleDelete(row)">删除</OaButton>
+        </template>
+      </OaTable>
     </el-card>
 
     <!-- 用户表单弹窗 -->
@@ -106,6 +95,17 @@ const pagination = reactive({
 })
 
 const tableData = ref([])
+
+// 表格列定义
+const columns = [
+  { prop: 'id', label: 'ID', width: 80 },
+  { prop: 'username', label: '用户名', width: 140 },
+  { prop: 'realName', label: '姓名', width: 120 },
+  { prop: 'mobile', label: '手机号', width: 140 },
+  { prop: 'email', label: '邮箱', minWidth: 200 },
+  { prop: 'status', label: '状态', width: 100 },
+  { prop: 'createTime', label: '创建时间', minWidth: 180 }
+]
 
 const dialogVisible = ref(false)
 const dialogTitle = ref('新增用户')

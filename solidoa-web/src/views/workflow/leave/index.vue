@@ -19,48 +19,46 @@
       </div>
 
       <div class="table-wrapper" role="region" aria-label="请假申请列表">
-        <table class="data-table" role="table">
-          <thead>
-            <tr role="row">
-              <th role="columnheader">请假单号</th>
-              <th role="columnheader">申请日期</th>
-              <th role="columnheader">请假类型</th>
-              <th role="columnheader">开始时间</th>
-              <th role="columnheader">结束时间</th>
-              <th role="columnheader">时长</th>
-              <th role="columnheader">状态</th>
-              <th role="columnheader">操作</th>
-            </tr>
-          </thead>
-          <tbody role="rowgroup">
-            <tr v-for="row in tableData" :key="row.id" role="row">
-              <td class="mono" role="cell">{{ row.leaveNo }}</td>
-              <td class="mono" role="cell">{{ row.applyDate }}</td>
-              <td role="cell">
-                <span class="type-badge" :class="getTypeClass(row.leaveType)">
-                  {{ typeMap[row.leaveType] || row.leaveType }}
-                </span>
-              </td>
-              <td class="mono" role="cell">{{ row.startTimeDesc }}</td>
-              <td class="mono" role="cell">{{ row.endTimeDesc }}</td>
-              <td class="mono highlight" role="cell">{{ row.duration }}{{ row.unit }}</td>
-              <td role="cell">
-                <span class="status-badge" :class="getStatusClass(row.status)" role="status" :aria-label="getStatusText(row.status)">
-                  <span class="status-dot" aria-hidden="true"></span>
-                  {{ getStatusText(row.status) }}
-                </span>
-              </td>
-              <td class="action-cell" role="cell">
-                <button class="action-btn view" @click="handleView(row)" :aria-label="`查看 ${row.leaveNo}`">查看</button>
-                <button v-if="row.status === 'PENDING' && activeTab === 'my'" class="action-btn cancel" @click="handleCancel(row)" :aria-label="`撤回 ${row.leaveNo}`">撤回</button>
-                <button v-if="activeTab === 'pending'" class="action-btn approve" @click="handleApprove(row)" :aria-label="`审批 ${row.leaveNo}`">审批</button>
-              </td>
-            </tr>
-            <tr v-if="tableData.length === 0" role="row">
-              <td colspan="8" class="empty-cell" role="cell"><span class="empty-text" role="status">暂无数据</span></td>
-            </tr>
-          </tbody>
-        </table>
+        <OaTable
+          :data="tableData"
+          :columns="columns"
+          :total="total"
+          :page="query.page"
+          :size="query.size"
+          @update:page="p => { query.page = p; loadData() }"
+          @update:size="s => { query.size = s; query.page = 1; loadData() }"
+        >
+          <template #leaveType="{ row }">
+            <span class="type-badge" :class="getTypeClass(row.leaveType)">
+              {{ typeMap[row.leaveType] || row.leaveType }}
+            </span>
+          </template>
+          <template #status="{ row }">
+            <OaStatusBadge
+              :type="getBadgeType(row.status)"
+              :text="getStatusText(row.status)"
+            />
+          </template>
+          <template #actions="{ row }">
+            <OaButton variant="ghost" size="small" @click="handleView(row)">查看</OaButton>
+            <OaButton
+              v-if="row.status === 'PENDING' && activeTab === 'my'"
+              variant="danger"
+              size="small"
+              @click="handleCancel(row)"
+            >
+              撤回
+            </OaButton>
+            <OaButton
+              v-if="activeTab === 'pending'"
+              variant="primary"
+              size="small"
+              @click="handleApprove(row)"
+            >
+              审批
+            </OaButton>
+          </template>
+        </OaTable>
       </div>
     </div>
 
@@ -236,6 +234,15 @@
               <span class="detail-value reason">{{ currentDetail.reason || '-' }}</span>
             </div>
           </div>
+
+          <!-- 审批流程图（V2.0 接入 State Machine） -->
+          <OaApprovalCard
+            v-if="currentDetail && currentDetail.id"
+            :title="'审批流程'"
+            business-type="LEAVE"
+            :business-id="currentDetail.id"
+            class="detail-flow-card"
+          />
         </div>
         <div class="dialog-footer" v-if="activeTab === 'pending' && currentDetail.status === 'PENDING'">
           <button class="cyber-btn" @click="detailVisible = false">关闭</button>
@@ -259,12 +266,33 @@ import { Plus, Delete } from '@element-plus/icons-vue'
 
 const activeTab = ref('my')
 const tableData = ref([])
+const total = ref(0)
+const query = reactive({ page: 1, size: 10 })
 const dialogVisible = ref(false)
 const detailVisible = ref(false)
 const isSubmitting = ref(false)
 const currentDetail = ref({})
 const uploading = ref(false)
 const uploadRef = ref(null)
+
+// 表格列定义（Sprint 2 续：从模板迁移到 columns 数组）
+const columns = [
+  { prop: 'leaveNo', label: '请假单号', width: 160 },
+  { prop: 'applyDate', label: '申请日期', width: 120 },
+  { prop: 'leaveType', label: '请假类型', width: 110 },
+  { prop: 'startTimeDesc', label: '开始时间', minWidth: 160 },
+  { prop: 'endTimeDesc', label: '结束时间', minWidth: 160 },
+  { prop: 'duration', label: '时长', width: 100, formatter: (val, row) => `${val || 0}${row.unit || ''}` },
+  { prop: 'status', label: '状态', width: 110 }
+]
+
+// 状态 -> OaStatusBadge type 映射
+const getBadgeType = (status) => ({
+  PENDING: 'warning',
+  APPROVED: 'success',
+  REJECTED: 'danger',
+  CANCELLED: 'info'
+}[status] || 'default')
 
 // 请假类型配置：name-显示名称，unit-计量单位(HOUR/HALF_DAY/DAY)
 const typeMap = {
@@ -376,8 +404,10 @@ const handleFileRemove = (file, fileList) => {
 
 const loadData = async () => {
   try {
-    const res = activeTab.value === 'my' ? await workflowApi.getLeaveList({}) : await workflowApi.getMyTasks()
-    tableData.value = res.data?.data?.records || res.data?.data || []
+    const res = activeTab.value === 'my' ? await workflowApi.getLeaveList(query) : await workflowApi.getMyTasks(query)
+    const data = res.data?.data
+    tableData.value = data?.records || data || []
+    total.value = data?.total || tableData.value.length
   } catch (error) { console.error('加载数据失败', error) }
 }
 

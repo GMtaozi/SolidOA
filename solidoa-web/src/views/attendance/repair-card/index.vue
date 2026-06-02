@@ -50,55 +50,51 @@
       </div>
 
       <div class="table-wrapper">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>补卡单号</th>
-              <th>申请日期</th>
-              <th>补卡类型</th>
-              <th>打卡类型</th>
-              <th>补卡时间</th>
-              <th>状态</th>
-              <th>操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="row in tableData" :key="row.id">
-              <td class="mono">{{ row.repairNo }}</td>
-              <td class="mono">{{ row.applyDate }}</td>
-              <td>
-                <span class="type-badge" :class="getTypeClass(row.repairType)">
-                  {{ typeMap[row.repairType] || row.repairType }}
-                </span>
-              </td>
-              <td>
-                <span class="clock-badge" :class="row.clockType === 'CLOCK_IN' ? 'in' : 'out'">
-                  {{ row.clockType === 'CLOCK_IN' ? '上班' : '下班' }}
-                </span>
-              </td>
-              <td class="mono highlight">{{ row.repairTime }}</td>
-              <td>
-                <span class="status-badge" :class="getStatusClass(row.status)">
-                  <span class="status-dot"></span>
-                  {{ getStatusText(row.status) }}
-                </span>
-              </td>
-              <td class="action-cell">
-                <button class="action-btn view" @click="handleView(row)">查看</button>
-                <button v-if="row.status === 'PENDING' && activeTab === 'my'" class="action-btn cancel" @click="handleCancel(row)">撤回</button>
-                <button v-if="activeTab === 'pending'" class="action-btn approve" @click="handleApprove(row)">审批</button>
-              </td>
-            </tr>
-            <tr v-if="tableData.length === 0">
-              <td colspan="7" class="empty-cell">
-                <div class="empty-state">
-                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" stroke="currentColor" stroke-width="2"/><line x1="16" y1="2" x2="16" y2="6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="8" y1="2" x2="8" y2="6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="3" y1="10" x2="21" y2="10" stroke="currentColor" stroke-width="2"/></svg>
-                  <span>暂无补卡记录</span>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+        <OaTable
+          :data="tableData"
+          :columns="columns"
+          :total="total"
+          :page="query.page"
+          :size="query.size"
+          @update:page="p => { query.page = p; loadData() }"
+          @update:size="s => { query.size = s; query.page = 1; loadData() }"
+        >
+          <template #repairType="{ row }">
+            <span class="type-badge" :class="getTypeClass(row.repairType)">
+              {{ typeMap[row.repairType] || row.repairType }}
+            </span>
+          </template>
+          <template #clockType="{ row }">
+            <span class="clock-badge" :class="row.clockType === 'CLOCK_IN' ? 'in' : 'out'">
+              {{ row.clockType === 'CLOCK_IN' ? '上班' : '下班' }}
+            </span>
+          </template>
+          <template #status="{ row }">
+            <OaStatusBadge
+              :type="getBadgeType(row.status)"
+              :text="getStatusText(row.status)"
+            />
+          </template>
+          <template #actions="{ row }">
+            <OaButton variant="ghost" size="small" @click="handleView(row)">查看</OaButton>
+            <OaButton
+              v-if="row.status === 'PENDING' && activeTab === 'my'"
+              variant="danger"
+              size="small"
+              @click="handleCancel(row)"
+            >
+              撤回
+            </OaButton>
+            <OaButton
+              v-if="activeTab === 'pending'"
+              variant="primary"
+              size="small"
+              @click="handleApprove(row)"
+            >
+              审批
+            </OaButton>
+          </template>
+        </OaTable>
       </div>
     </div>
 
@@ -333,6 +329,15 @@
               </div>
             </div>
           </div>
+
+          <!-- 审批流程图（V2.0 接入 State Machine，Sprint 3.4 修复 hr 业务节点写入） -->
+          <OaApprovalCard
+            v-if="currentDetail && currentDetail.id"
+            title="审批流程"
+            business-type="REPAIR_CARD"
+            :business-id="currentDetail.id"
+            class="detail-flow-card"
+          />
         </div>
         <div class="dialog-footer" v-if="activeTab === 'pending' && currentDetail.status === 'PENDING'">
           <button class="cyber-btn" @click="detailVisible = false">关闭</button>
@@ -357,11 +362,28 @@ import { Plus } from '@element-plus/icons-vue'
 
 const activeTab = ref('my')
 const tableData = ref([])
+const total = ref(0)
+const query = reactive({ page: 1, size: 10 })
 const dialogVisible = ref(false)
 const detailVisible = ref(false)
 const isSubmitting = ref(false)
 const stats = ref({ remainingCount: 5, usedCount: 0, approvedCount: 0 })
 const currentDetail = ref({})
+
+// 表格列定义
+const columns = [
+  { prop: 'repairNo', label: '补卡单号', width: 160 },
+  { prop: 'applyDate', label: '申请日期', width: 120 },
+  { prop: 'repairType', label: '补卡类型', width: 110 },
+  { prop: 'clockType', label: '打卡类型', width: 100 },
+  { prop: 'repairTime', label: '补卡时间', width: 140 },
+  { prop: 'status', label: '状态', width: 110 }
+]
+
+// 状态 -> OaStatusBadge type
+const getBadgeType = (status) => ({
+  PENDING: 'warning', APPROVED: 'success', REJECTED: 'danger', CANCELLED: 'info'
+}[status] || 'default')
 const uploading = ref(false)
 const uploadRef = ref(null)
 
@@ -434,8 +456,10 @@ const loadStatistics = async () => {
 
 const loadData = async () => {
   try {
-    const res = activeTab.value === 'my' ? await hrApi.getRepairCardList({}) : await workflowApi.getMyTasks()
-    tableData.value = res.data?.data?.records || res.data?.data || []
+    const res = activeTab.value === 'my' ? await hrApi.getRepairCardList(query) : await workflowApi.getMyTasks(query)
+    const data = res.data?.data
+    tableData.value = data?.records || data || []
+    total.value = data?.total || tableData.value.length
   } catch (error) { console.error('加载数据失败', error) }
 }
 

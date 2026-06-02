@@ -120,5 +120,7 @@ export const hrApi = {
   paySalary: (id) => request.post(`/v1/hr/finance/salary/${id}/pay`),
   batchPaySalary: (data) => request.post('/v1/hr/finance/salary/batch-pay', data),
   getMySalary: (params) => request.get('/v1/hr/finance/salary/my', { params }),
-  exportSalary: (params) => request.get('/v1/hr/finance/salary/export', { params, responseType: 'blob' })
+  exportSalary: (params) => request.get('/v1/hr/finance/salary/export', { params, responseType: 'blob' }),
+  confirmSalary: (id) => request.post(`/v1/hr/finance/salary/${id}/confirm`),
+  disputeSalary: (id, data) => request.post(`/v1/hr/finance/salary/${id}/dispute`, data)
 }

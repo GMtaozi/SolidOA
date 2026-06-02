@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.solidoa.dingtalk.mapper.DingtalkConfigMapper">
-
-    <select id="selectActiveConfig" resultType="com.solidoa.dingtalk.entity.DingtalkConfig">
-        SELECT * FROM oa_dingtalk_config WHERE status = 1 LIMIT 1
-    </select>
-
-</mapper>

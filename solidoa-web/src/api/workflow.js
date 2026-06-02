@@ -64,5 +64,23 @@ export const workflowApi = {
   getMyApplyList: (params) => request.get('/v1/workflow/record/my-apply', { params }),
   getMyApprovedList: (params) => request.get('/v1/workflow/record/my-approved', { params }),
   getApprovalRecordFlow: (id) => request.get(`/v1/workflow/record/${id}/flow`),
-  exportApprovalRecord: (params) => request.get('/v1/workflow/record/export', { params, responseType: 'blob' })
+  exportApprovalRecord: (params) => request.get('/v1/workflow/record/export', { params, responseType: 'blob' }),
+
+  // ========== 用印记录 ==========
+  getStampRecords: (params) => request.get('/v1/workflow/stamp/records', { params }),
+
+  // ========== 审批流统一入口（V2.0 State Machine 8 端点，适配器模式保留旧 API） ==========
+  // 流程图（核心：含 nodes + edges）
+  getFlowGraph: (type, id) => request.get(`/v1/workflow/approval/${type}/${id}/flow-graph`),
+  // 撤回
+  withdraw: (type, id, data) => request.post(`/v1/workflow/approval/${type}/${id}/withdraw`, data),
+  // 转交
+  transferApproval: (type, id, data) => request.post(`/v1/workflow/approval/${type}/${id}/transfer`, data),
+  // 加签
+  addSignApproval: (type, id, data) => request.post(`/v1/workflow/approval/${type}/${id}/add-sign`, data),
+  // 同意/拒绝（统一入口，V2.0 推荐使用）
+  universalApprove: (type, id, data) => request.post(`/v1/workflow/approval/${type}/${id}/approve`, data),
+  universalReject: (type, id, data) => request.post(`/v1/workflow/approval/${type}/${id}/reject`, data),
+  // 状态机调试信息
+  getStateMachineInfo: () => request.get('/v1/workflow/approval/state-machine/info')
 }

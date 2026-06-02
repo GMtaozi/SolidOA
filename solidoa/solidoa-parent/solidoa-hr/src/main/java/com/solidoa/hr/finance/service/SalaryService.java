@@ -39,4 +39,14 @@ public interface SalaryService {
     List<SalaryVO> getMySalary(Long userId, String startMonth, String endMonth);
 
     void exportSalary(String yearMonth, Long deptId, HttpServletResponse response);
+
+    /**
+     * 确认工资条
+     */
+    void confirmSalary(Long id, Long userId);
+
+    /**
+     * 提出工资异议
+     */
+    void disputeSalary(Long id, Long userId, String reason);
 }

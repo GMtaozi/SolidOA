@@ -19,42 +19,41 @@
       </div>
 
       <div class="table-wrapper">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>加班单号</th>
-              <th>申请日期</th>
-              <th>开始时间</th>
-              <th>结束时间</th>
-              <th>时长(小时)</th>
-              <th>状态</th>
-              <th>操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="row in tableData" :key="row.id">
-              <td class="mono">{{ row.overtimeNo }}</td>
-              <td class="mono">{{ row.applyDate }}</td>
-              <td class="mono">{{ row.startTime }}</td>
-              <td class="mono">{{ row.endTime }}</td>
-              <td class="mono highlight">{{ row.hours }}</td>
-              <td>
-                <span class="status-badge" :class="getStatusClass(row.status)">
-                  <span class="status-dot"></span>
-                  {{ getStatusText(row.status) }}
-                </span>
-              </td>
-              <td class="action-cell">
-                <button class="action-btn view" @click="handleView(row)">查看</button>
-                <button v-if="row.status === 'PENDING' && activeTab === 'my'" class="action-btn cancel" @click="handleCancel(row)">撤回</button>
-                <button v-if="activeTab === 'pending'" class="action-btn approve" @click="handleApprove(row)">审批</button>
-              </td>
-            </tr>
-            <tr v-if="tableData.length === 0">
-              <td colspan="7" class="empty-cell"><span class="empty-text">暂无数据</span></td>
-            </tr>
-          </tbody>
-        </table>
+        <OaTable
+          :data="tableData"
+          :columns="columns"
+          :total="total"
+          :page="query.page"
+          :size="query.size"
+          @update:page="p => { query.page = p; loadData() }"
+          @update:size="s => { query.size = s; query.page = 1; loadData() }"
+        >
+          <template #status="{ row }">
+            <OaStatusBadge
+              :type="getBadgeType(row.status)"
+              :text="getStatusText(row.status)"
+            />
+          </template>
+          <template #actions="{ row }">
+            <OaButton variant="ghost" size="small" @click="handleView(row)">查看</OaButton>
+            <OaButton
+              v-if="row.status === 'PENDING' && activeTab === 'my'"
+              variant="danger"
+              size="small"
+              @click="handleCancel(row)"
+            >
+              撤回
+            </OaButton>
+            <OaButton
+              v-if="activeTab === 'pending'"
+              variant="primary"
+              size="small"
+              @click="handleApprove(row)"
+            >
+              审批
+            </OaButton>
+          </template>
+        </OaTable>
       </div>
     </div>
 
@@ -143,6 +142,15 @@
               <span class="detail-value reason">{{ currentDetail.reason || '-' }}</span>
             </div>
           </div>
+
+          <!-- 审批流程图（V2.0 接入 State Machine） -->
+          <OaApprovalCard
+            v-if="currentDetail && currentDetail.id"
+            title="审批流程"
+            business-type="OVERTIME"
+            :business-id="currentDetail.id"
+            class="detail-flow-card"
+          />
         </div>
         <div class="dialog-footer" v-if="activeTab === 'pending' && currentDetail.status === 'PENDING'">
           <button class="cyber-btn" @click="detailVisible = false">关闭</button>
@@ -175,10 +183,27 @@ const escapeHtml = (str) => {
 
 const activeTab = ref('my')
 const tableData = ref([])
+const total = ref(0)
+const query = reactive({ page: 1, size: 10 })
 const dialogVisible = ref(false)
 const detailVisible = ref(false)
 const isSubmitting = ref(false)
 const currentDetail = ref({})
+
+// 表格列定义
+const columns = [
+  { prop: 'overtimeNo', label: '加班单号', width: 160 },
+  { prop: 'applyDate', label: '申请日期', width: 120 },
+  { prop: 'startTime', label: '开始时间', minWidth: 160 },
+  { prop: 'endTime', label: '结束时间', minWidth: 160 },
+  { prop: 'hours', label: '时长(小时)', width: 110 },
+  { prop: 'status', label: '状态', width: 110 }
+]
+
+// 状态 -> OaStatusBadge type
+const getBadgeType = (status) => ({
+  PENDING: 'warning', APPROVED: 'success', REJECTED: 'danger', CANCELLED: 'info'
+}[status] || 'default')
 
 const form = reactive({
   startTime: '',
@@ -212,8 +237,10 @@ const calcHours = () => {
 
 const loadData = async () => {
   try {
-    const res = activeTab.value === 'my' ? await hrApi.getOvertimeList({}) : await workflowApi.getMyTasks()
-    tableData.value = res.data?.data?.records || res.data?.data || []
+    const res = activeTab.value === 'my' ? await hrApi.getOvertimeList(query) : await workflowApi.getMyTasks(query)
+    const data = res.data?.data
+    tableData.value = data?.records || data || []
+    total.value = data?.total || tableData.value.length
   } catch (error) { console.error('加载数据失败', error) }
 }
 

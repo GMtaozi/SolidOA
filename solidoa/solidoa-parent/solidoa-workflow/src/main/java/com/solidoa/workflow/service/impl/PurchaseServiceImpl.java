@@ -7,6 +7,8 @@ import com.solidoa.workflow.mapper.*;
 import com.solidoa.common.exception.BusinessException;
 import com.solidoa.workflow.service.PurchaseService;
 import com.solidoa.workflow.service.ApprovalNodeService;
+import com.solidoa.workflow.service.UniversalApprovalService;
+import com.solidoa.workflow.enums.ApprovalEvent;
 import com.solidoa.workflow.vo.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,6 +35,7 @@ public class PurchaseServiceImpl implements PurchaseService {
     private final PurchaseProgressMapper progressMapper;
     private final ApprovalRecordMapper approvalRecordMapper;
     private final ApprovalNodeService approvalNodeService;
+    private final UniversalApprovalService universalService;
 
     /** 采购类型映射 */
     private static final Map<String, String> PURCHASE_TYPE_MAP = new HashMap<>();
@@ -170,50 +173,26 @@ public class PurchaseServiceImpl implements PurchaseService {
     @Override
     @Transactional
     public void approvePurchase(Long id, ApproveForm form, Long approverId) {
-        Purchase purchase = purchaseMapper.selectById(id);
-        if (purchase == null) {
-            throw new BusinessException(404, "采购申请不存在");
-        }
-
-        // 状态校验：只有 PENDING 状态才能审批
-        if (!"PENDING".equals(purchase.getStatus())) {
-            throw new BusinessException(403, "当前状态不允许审批，请刷新后重试");
-        }
-
-        // 审批人身份校验：必须是当前审批人或申请人
-        if (purchase.getCurrentApproverId() == null || !purchase.getCurrentApproverId().equals(approverId)) {
-            throw new BusinessException(403, "您不是该申请的当前审批人，无权审批");
-        }
-
-        // 保存审批记录
-        saveApprovalRecord(id, "PURCHASE", approverId, form.getApproveType(), form.getComment());
-
-        String newStatus;
-        String newDeliveryStatus = purchase.getDeliveryStatus();
-        if ("APPROVE".equals(form.getApproveType())) {
-            newStatus = "APPROVED";
-            newDeliveryStatus = "PURCHASING";
-        } else if ("REJECT".equals(form.getApproveType())) {
-            newStatus = "REJECTED";
-        } else {
+        // 验证审批类型
+        if (!"APPROVE".equals(form.getApproveType()) && !"REJECT".equals(form.getApproveType())) {
             throw new BusinessException(400, "无效的审批类型");
         }
 
-        // 使用乐观锁更新：检查状态和版本号
-        purchase.setStatus(newStatus);
-        purchase.setDeliveryStatus(newDeliveryStatus);
-        purchase.setUpdateTime(LocalDateTime.now());
+        // [A1 第二步] 委托 UniversalApprovalService 走状态机 + 乐观锁
+        ApprovalEvent event = "APPROVE".equals(form.getApproveType()) ? ApprovalEvent.APPROVE : ApprovalEvent.REJECT;
+        universalService.fire("PURCHASE", id, approverId, event, form.getComment());
 
-        int rows = purchaseMapper.update(
-            purchase,
-            new LambdaQueryWrapper<Purchase>()
-                .eq(Purchase::getId, id)
-                .eq(Purchase::getStatus, "PENDING")  // 乐观锁：确保状态未被修改
-                .eq(Purchase::getVersion, purchase.getVersion())
-        );
+        // 业务副作用：保存审批记录
+        saveApprovalRecord(id, "PURCHASE", approverId, form.getApproveType(), form.getComment());
 
-        if (rows == 0) {
-            throw new BusinessException(400, "数据已被其他操作修改，请刷新后重试");
+        // 业务副作用：审批通过后改 deliveryStatus = PURCHASING
+        if ("APPROVE".equals(form.getApproveType())) {
+            Purchase purchase = purchaseMapper.selectById(id);
+            if (purchase != null) {
+                purchase.setDeliveryStatus("PURCHASING");
+                purchase.setUpdateTime(LocalDateTime.now());
+                purchaseMapper.updateById(purchase);
+            }
         }
 
         log.info("审批采购申请: id={}, approverId={}, type={}", id, approverId, form.getApproveType());
@@ -222,33 +201,10 @@ public class PurchaseServiceImpl implements PurchaseService {
     @Override
     @Transactional
     public void cancelPurchase(Long id, Long userId) {
-        Purchase purchase = purchaseMapper.selectById(id);
-        if (purchase == null) {
-            throw new BusinessException(404, "采购申请不存在");
-        }
-        if (!purchase.getUserId().equals(userId)) {
-            throw new BusinessException(400, "只能撤回自己的申请");
-        }
-        if (!"PENDING".equals(purchase.getStatus())) {
-            throw new BusinessException(403, "当前状态不允许撤回");
-        }
+        // [A1 第二步] 委托 UniversalApprovalService 走状态机 + 乐观锁
+        universalService.fire("PURCHASE", id, userId, ApprovalEvent.WITHDRAW, "申请人撤回");
 
-        purchase.setStatus("CANCELLED");
-        purchase.setUpdateTime(LocalDateTime.now());
-
-        // 使用乐观锁更新
-        int rows = purchaseMapper.update(
-            purchase,
-            new LambdaQueryWrapper<Purchase>()
-                .eq(Purchase::getId, id)
-                .eq(Purchase::getStatus, "PENDING")
-                .eq(Purchase::getVersion, purchase.getVersion())
-        );
-
-        if (rows == 0) {
-            throw new BusinessException(400, "数据已被其他操作修改，请刷新后重试");
-        }
-
+        // 业务副作用：保存撤回记录
         saveApprovalRecord(id, "PURCHASE", userId, "CANCEL", "撤回申请");
         log.info("撤回采购申请: id={}, userId={}", id, userId);
     }

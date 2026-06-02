@@ -6,6 +6,8 @@ import com.solidoa.workflow.form.StampRecordForm;
 import com.solidoa.workflow.form.ApproveForm;
 import com.solidoa.workflow.vo.StampVO;
 import com.solidoa.workflow.vo.StampStatisticsVO;
+import com.solidoa.workflow.entity.StampUsageRecord;
+import com.solidoa.workflow.mapper.StampUsageRecordMapper;
 import com.solidoa.workflow.service.StampService;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
@@ -23,6 +25,9 @@ public class StampController {
 
     @Autowired
     private StampService stampService;
+
+    @Autowired
+    private StampUsageRecordMapper stampUsageRecordMapper;
 
     @PostMapping
     public Result<Long> create(@RequestBody @Valid StampForm form,
@@ -83,6 +88,18 @@ public class StampController {
             Map.of("value", "LEGAL", "label", "法人章")
         );
         return Result.success(types);
+    }
+
+    /**
+     * 查询用印记录
+     */
+    @GetMapping("/records")
+    public Result<List<StampUsageRecord>> records(
+            @RequestParam(required = false) String stampType,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate) {
+        List<StampUsageRecord> records = stampUsageRecordMapper.selectList(null);
+        return Result.success(records);
     }
 
     @GetMapping("/test")

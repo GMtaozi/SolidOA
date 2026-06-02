@@ -34,6 +34,15 @@ export default defineConfig({
       }
     }
   },
+  css: {
+    preprocessorOptions: {
+      scss: {
+        // 注入 tokens + mixins 到所有 <style lang="scss"> 块。
+        // 注意: tokens.scss 与 mixins.scss 自身不要 @use 这两个文件（会模块循环）。
+        additionalData: `@use "@/styles/tokens.scss" as *;\n@use "@/styles/mixins.scss" as *;\n`
+      }
+    }
+  },
   build: {
     // 启用代码分割
     rollupOptions: {
@@ -50,5 +59,15 @@ export default defineConfig({
     chunkSizeWarningLimit: 500,
     // 生产环境禁用 source-map
     sourcemap: false
+  },
+  // Vitest 测试配置（与 Vite 共享）
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    include: ['src/**/__tests__/**/*.{test,spec}.{js,ts}', 'src/**/*.{test,spec}.{js,ts}'],
+    coverage: {
+      reporter: ['text', 'html'],
+      include: ['src/components/**/*.vue', 'src/api/**/*.ts', 'src/utils/**/*.ts']
+    }
   }
 })

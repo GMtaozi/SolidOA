@@ -32,63 +32,54 @@
 
       <!-- 数据表格 -->
       <div class="table-wrapper">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>用印单号</th>
-              <th>用印类型</th>
-              <th>文件名称</th>
-              <th>份数</th>
-              <th>用途</th>
-              <th>状态</th>
-              <th>申请时间</th>
-              <th>操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="row in tableData" :key="row.id">
-              <td class="mono">{{ row.stampNo }}</td>
-              <td>
-                <span class="type-badge" :class="getStampTypeClass(row.stampType)">
-                  {{ row.stampTypeDesc || row.stampType }}
-                </span>
-              </td>
-              <td class="name-cell">{{ row.documentName }}</td>
-              <td class="mono">{{ row.documentCount }}份</td>
-              <td class="reason-cell">{{ row.usage }}</td>
-              <td>
-                <span class="status-badge" :class="getStatusClass(row.status)">
-                  <span class="status-dot"></span>
-                  {{ row.statusDesc || row.status }}
-                </span>
-              </td>
-              <td class="mono time-cell">{{ formatTime(row.createTime) }}</td>
-              <td class="action-cell">
-                <button class="action-btn view" @click="handleView(row)">查看</button>
-                <button
-                  v-if="row.status === 'PENDING' && activeTab === 'my'"
-                  class="action-btn cancel"
-                  @click="handleCancel(row)"
-                >撤回</button>
-                <button
-                  v-if="activeTab === 'pending'"
-                  class="action-btn approve"
-                  @click="handleApprove(row)"
-                >审批</button>
-                <button
-                  v-if="row.status === 'APPROVED'"
-                  class="action-btn record"
-                  @click="handleRecord(row)"
-                >登记</button>
-              </td>
-            </tr>
-            <tr v-if="tableData.length === 0">
-              <td colspan="8" class="empty-cell">
-                <span class="empty-text">暂无数据</span>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+        <OaTable
+          :data="tableData"
+          :columns="columns"
+          :total="total"
+          :page="query.page"
+          :size="query.size"
+          @update:page="p => { query.page = p; loadData() }"
+          @update:size="s => { query.size = s; query.page = 1; loadData() }"
+        >
+          <template #stampType="{ row }">
+            <span class="type-badge" :class="getStampTypeClass(row.stampType)">
+              {{ row.stampTypeDesc || row.stampType }}
+            </span>
+          </template>
+          <template #status="{ row }">
+            <OaStatusBadge
+              :type="getBadgeType(row.status)"
+              :text="getStatusText(row.status)"
+            />
+          </template>
+          <template #actions="{ row }">
+            <OaButton variant="ghost" size="small" @click="handleView(row)">查看</OaButton>
+            <OaButton
+              v-if="row.status === 'PENDING' && activeTab === 'my'"
+              variant="danger"
+              size="small"
+              @click="handleCancel(row)"
+            >
+              撤回
+            </OaButton>
+            <OaButton
+              v-if="activeTab === 'pending'"
+              variant="primary"
+              size="small"
+              @click="handleApprove(row)"
+            >
+              审批
+            </OaButton>
+            <OaButton
+              v-if="row.status === 'APPROVED'"
+              variant="primary"
+              size="small"
+              @click="handleRecord(row)"
+            >
+              登记
+            </OaButton>
+          </template>
+        </OaTable>
       </div>
     </div>
 
@@ -294,6 +285,15 @@
           <div class="detail-item"><span class="label">申请日期</span><span class="value">{{ currentDetail.stampDate }}</span></div>
           <div class="detail-item"><span class="label">备注</span><span class="value">{{ currentDetail.remark || '无' }}</span></div>
           <div class="detail-item"><span class="label">状态</span><span class="value" :class="'status-' + (currentDetail.status || '').toLowerCase()">{{ currentDetail.status }}</span></div>
+
+          <!-- 审批流程图（V2.0 接入 State Machine） -->
+          <OaApprovalCard
+            v-if="currentDetail && currentDetail.id"
+            title="审批流程"
+            business-type="STAMP"
+            :business-id="currentDetail.id"
+            class="detail-flow-card"
+          />
         </div>
         <div class="dialog-footer">
           <button class="cyber-btn" @click="detailVisible = false">关闭</button>
@@ -314,10 +314,28 @@ import { UploadFilled } from '@element-plus/icons-vue'
 
 const activeTab = ref('my')
 const tableData = ref([])
+const total = ref(0)
+const query = reactive({ page: 1, size: 10 })
 const dialogVisible = ref(false)
 const uploading = ref(false)
 const approveDialogVisible = ref(false)
 const recordDialogVisible = ref(false)
+
+// 表格列定义
+const columns = [
+  { prop: 'stampNo', label: '用印单号', width: 160 },
+  { prop: 'stampType', label: '用印类型', width: 110 },
+  { prop: 'documentName', label: '文件名称', minWidth: 180 },
+  { prop: 'documentCount', label: '份数', width: 80, formatter: (val) => `${val || 0}份` },
+  { prop: 'usage', label: '用途', minWidth: 180 },
+  { prop: 'status', label: '状态', width: 110 },
+  { prop: 'createTime', label: '申请时间', width: 160, formatter: (val) => formatTime(val) }
+]
+
+// 状态 -> OaStatusBadge type
+const getBadgeType = (status) => ({
+  PENDING: 'warning', APPROVED: 'success', REJECTED: 'danger', CANCELLED: 'info', COMPLETED: 'primary'
+}[status] || 'default')
 const detailVisible = ref(false)
 const dialogTitle = ref('新增用印')
 const currentRow = ref(null)
@@ -396,9 +414,11 @@ const getStatusClass = (status) => {
 const loadData = async () => {
   try {
     const res = activeTab.value === 'my'
-      ? await workflowApi.getStampList({})
-      : await workflowApi.getMyTasks()
-    tableData.value = res.data?.data?.records || res.data?.data || []
+      ? await workflowApi.getStampList(query)
+      : await workflowApi.getMyTasks(query)
+    const data = res.data?.data
+    tableData.value = data?.records || data || []
+    total.value = data?.total || tableData.value.length
   } catch (error) {
     console.error('加载数据失败', error)
   }

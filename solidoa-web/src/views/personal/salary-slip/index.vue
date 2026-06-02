@@ -81,7 +81,12 @@
           <template #footer>
             <div class="card-footer">
               <span class="date">发放时间：{{ formatDate(item.paidTime) }}</span>
-              <el-button type="primary" link @click="handleViewDetail(item)">查看详情</el-button>
+              <div class="actions">
+                <el-button type="primary" link @click="handleViewDetail(item)">查看详情</el-button>
+                <el-button v-if="item.status === 'PAID' && !item.confirmed" type="success" link @click="handleConfirm(item)">确认工资</el-button>
+                <el-tag v-if="item.confirmed" type="success" size="small">已确认</el-tag>
+                <el-button v-if="item.status === 'PAID' && !item.confirmed" type="warning" link @click="handleDispute(item)">提出异议</el-button>
+              </div>
             </div>
           </template>
         </el-card>
@@ -120,19 +125,38 @@
         <el-button @click="detailVisible = false">关闭</el-button>
       </template>
     </el-dialog>
+
+    <!-- 异议弹窗 -->
+    <el-dialog v-model="disputeVisible" title="提出工资异议" width="500px">
+      <div v-if="currentSalary" class="dispute-info">
+        <p><strong>工资月份：</strong>{{ currentSalary.yearMonth }}</p>
+        <p><strong>实发工资：</strong>¥{{ currentSalary.netSalary?.toLocaleString() }}</p>
+      </div>
+      <el-form label-width="80px">
+        <el-form-item label="异议原因">
+          <el-input v-model="disputeForm.reason" type="textarea" :rows="4" placeholder="请详细描述工资条中存在的问题" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="disputeVisible = false">取消</el-button>
+        <el-button type="primary" @click="submitDispute">提交异议</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { hrApi } from '@/api'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { formatDate } from '@/composables/useTime'
 
 const loading = ref(false)
 const tableData = ref([])
 const detailVisible = ref(false)
+const disputeVisible = ref(false)
 const currentSalary = ref(null)
+const disputeForm = ref({ reason: '' })
 
 const queryParams = reactive({
   startMonth: '',
@@ -172,6 +196,43 @@ const handleReset = () => {
 const handleViewDetail = (item) => {
   currentSalary.value = item
   detailVisible.value = true
+}
+
+// 确认工资条
+const handleConfirm = async (item) => {
+  try {
+    await ElMessageBox.confirm('确认工资条无误？确认后将无法提出异议。', '确认工资', { type: 'warning' })
+    await hrApi.confirmSalary(item.id)
+    ElMessage.success('确认成功')
+    fetchData()
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error('确认失败')
+    }
+  }
+}
+
+// 提出异议
+const handleDispute = (item) => {
+  currentSalary.value = item
+  disputeForm.value.reason = ''
+  disputeVisible.value = true
+}
+
+// 提交异议
+const submitDispute = async () => {
+  if (!disputeForm.value.reason) {
+    ElMessage.warning('请填写异议原因')
+    return
+  }
+  try {
+    await hrApi.disputeSalary(currentSalary.value.id, disputeForm.value)
+    ElMessage.success('异议提交成功，HR将会处理')
+    disputeVisible.value = false
+    fetchData()
+  } catch (error) {
+    ElMessage.error('提交失败')
+  }
 }
 
 const fetchData = async () => {
@@ -292,7 +353,25 @@ onMounted(() => {
         color: var(--text-secondary);
         font-size: 12px;
       }
+
+      .actions {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
     }
+  }
+}
+
+.dispute-info {
+  background: #f9fafb;
+  padding: 16px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+
+  p {
+    margin: 8px 0;
+    color: #374151;
   }
 }
 

@@ -55,7 +55,11 @@ code-review-*.js
 
 # Temp files
 temp/
+$tempDir/
 表单设计/
+
+# Playwright MCP snapshots
+.playwright-mcp/
 
 # Logo files
 *.png

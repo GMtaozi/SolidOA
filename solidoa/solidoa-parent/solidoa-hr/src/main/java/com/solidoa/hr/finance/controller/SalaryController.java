@@ -118,4 +118,26 @@ public class SalaryController {
                              HttpServletResponse response) {
         salaryService.exportSalary(yearMonth, deptId, response);
     }
+
+    /**
+     * 确认工资条
+     */
+    @PostMapping("/{id}/confirm")
+    public Result<Void> confirmSalary(@PathVariable Long id,
+                                      @RequestHeader("X-User-Id") Long userId) {
+        salaryService.confirmSalary(id, userId);
+        return Result.success();
+    }
+
+    /**
+     * 提出工资异议
+     */
+    @PostMapping("/{id}/dispute")
+    public Result<Void> disputeSalary(@PathVariable Long id,
+                                      @RequestBody java.util.Map<String, String> body,
+                                      @RequestHeader("X-User-Id") Long userId) {
+        String reason = body.get("reason");
+        salaryService.disputeSalary(id, userId, reason);
+        return Result.success();
+    }
 }

@@ -14,26 +14,27 @@
         </div>
       </template>
 
-      <el-table :data="tableData" border class="cyber-table">
-        <el-table-column prop="id" label="ID" width="80" />
-        <el-table-column prop="name" label="角色名称" />
-        <el-table-column prop="code" label="角色编码" />
-        <el-table-column prop="description" label="描述" />
-        <el-table-column prop="status" label="状态" width="100">
-          <template #default="{ row }">
-            <span class="status-badge" :class="row.status === 1 ? 'status-active' : 'status-disabled'">
-              {{ row.status === 1 ? '启用' : '禁用' }}
-            </span>
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="280">
-          <template #default="{ row }">
-            <el-button type="primary" link class="cyber-link" @click="handleEdit(row)">编辑</el-button>
-            <el-button type="warning" link class="cyber-link warning" @click="handlePermission(row)">权限</el-button>
-            <el-button type="danger" link class="cyber-link danger" @click="handleDelete(row)">删除</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
+      <OaTable
+        :data="tableData"
+        :columns="columns"
+        :total="total"
+        :page="query.page"
+        :size="query.size"
+        :show-pagination="false"
+      >
+        <template #status="{ row }">
+          <OaStatusBadge
+            :type="row.status === 1 ? 'success' : 'default'"
+            :text="row.status === 1 ? '启用' : '禁用'"
+            :dot="false"
+          />
+        </template>
+        <template #actions="{ row }">
+          <OaButton variant="primary" size="small" @click="handleEdit(row)">编辑</OaButton>
+          <OaButton variant="ghost" size="small" @click="handlePermission(row)">权限</OaButton>
+          <OaButton variant="danger" size="small" @click="handleDelete(row)">删除</OaButton>
+        </template>
+      </OaTable>
     </el-card>
 
     <!-- 角色表单弹窗 -->
@@ -86,7 +87,18 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { systemApi } from '@/api/system'
 
 const tableData = ref([])
+const total = ref(0)
+const query = reactive({ page: 1, size: 10 })
 const loading = ref(false)
+
+// 表格列定义
+const columns = [
+  { prop: 'id', label: 'ID', width: 80 },
+  { prop: 'name', label: '角色名称', minWidth: 140 },
+  { prop: 'code', label: '角色编码', minWidth: 140 },
+  { prop: 'description', label: '描述', minWidth: 200 },
+  { prop: 'status', label: '状态', width: 100 }
+]
 
 const dialogVisible = ref(false)
 const permissionVisible = ref(false)

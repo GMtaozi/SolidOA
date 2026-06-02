@@ -10,6 +10,8 @@ import com.solidoa.common.vo.PageVO;
 import com.solidoa.common.dto.PageDTO;
 import com.solidoa.workflow.service.LeaveService;
 import com.solidoa.workflow.service.ApprovalNodeService;
+import com.solidoa.workflow.service.UniversalApprovalService;
+import com.solidoa.workflow.enums.ApprovalEvent;
 import com.solidoa.workflow.mapper.LeaveMapper;
 import com.solidoa.workflow.mapper.ApprovalRecordMapper;
 import com.solidoa.workflow.mq.WorkflowMessageProducer;
@@ -39,6 +41,9 @@ public class LeaveServiceImpl implements LeaveService {
 
     @Autowired
     private ApprovalNodeService approvalNodeService;
+
+    @Autowired
+    private UniversalApprovalService universalService;
 
     @Override
     @Transactional
@@ -115,37 +120,11 @@ public class LeaveServiceImpl implements LeaveService {
     @Override
     @Transactional
     public void approve(Long id, String approveResult, String comment, Long approverId) {
-        Leave leave = leaveMapper.selectById(id);
-        if (leave == null) {
-            throw new BusinessException("请假单不存在");
-        }
+        // [A1 第二步] 委托 UniversalApprovalService 走状态机 + 乐观锁
+        ApprovalEvent event = "APPROVED".equals(approveResult) ? ApprovalEvent.APPROVE : ApprovalEvent.REJECT;
+        universalService.fire("LEAVE", id, approverId, event, comment);
 
-        if (!"PENDING".equals(leave.getStatus())) {
-            throw new BusinessException("当前状态不允许审批");
-        }
-
-        // 审批人身份校验：必须是当前审批人或申请人
-        if (leave.getCurrentApproverId() == null || !leave.getCurrentApproverId().equals(approverId)) {
-            throw new BusinessException("您不是该申请的当前审批人，无权审批");
-        }
-
-        String newStatus = "APPROVED".equals(approveResult) ? "APPROVED" : "REJECTED";
-        leave.setStatus(newStatus);
-
-        // 使用乐观锁更新
-        int rows = leaveMapper.update(
-            leave,
-            new LambdaQueryWrapper<Leave>()
-                .eq(Leave::getId, id)
-                .eq(Leave::getStatus, "PENDING")
-                .eq(Leave::getVersion, leave.getVersion())
-        );
-
-        if (rows == 0) {
-            throw new BusinessException("数据已被其他操作修改，请刷新后重试");
-        }
-
-        // 记录审批历史
+        // 业务副作用：记录审批历史
         ApprovalRecord record = new ApprovalRecord();
         record.setBusinessType("LEAVE");
         record.setBusinessId(id);
@@ -155,17 +134,20 @@ public class LeaveServiceImpl implements LeaveService {
         record.setCreateTime(LocalDateTime.now());
         approvalRecordMapper.insert(record);
 
-        // 发送消息通知
-        ApprovalMessage message = new ApprovalMessage();
-        message.setBusinessType("LEAVE");
-        message.setBusinessId(id);
-        message.setApproverId(approverId);
-        message.setActionType(approveResult);
-        message.setComment(comment);
-        message.setApplyUserId(leave.getUserId());
-        message.setBusinessNo(leave.getLeaveNo());
-        message.setCreateTime(LocalDateTime.now());
-        messageProducer.sendApprovalMessage(message);
+        // 业务副作用：发送消息通知
+        Leave leave = leaveMapper.selectById(id);
+        if (leave != null) {
+            ApprovalMessage message = new ApprovalMessage();
+            message.setBusinessType("LEAVE");
+            message.setBusinessId(id);
+            message.setApproverId(approverId);
+            message.setActionType(approveResult);
+            message.setComment(comment);
+            message.setApplyUserId(leave.getUserId());
+            message.setBusinessNo(leave.getLeaveNo());
+            message.setCreateTime(LocalDateTime.now());
+            messageProducer.sendApprovalMessage(message);
+        }
 
         log.info("请假审批完成: id={}, result={}, approver={}", id, approveResult, approverId);
     }
@@ -173,31 +155,8 @@ public class LeaveServiceImpl implements LeaveService {
     @Override
     @Transactional
     public void cancel(Long id, Long userId) {
-        Leave leave = leaveMapper.selectById(id);
-        if (leave == null) {
-            throw new BusinessException("请假单不存在");
-        }
-
-        if (!userId.equals(leave.getUserId())) {
-            throw new BusinessException("只能撤回自己的申请");
-        }
-
-        if (!"PENDING".equals(leave.getStatus())) {
-            throw new BusinessException("当前状态不允许撤回");
-        }
-
-        leave.setStatus("CANCELLED");
-        int rows = leaveMapper.update(
-            leave,
-            new LambdaQueryWrapper<Leave>()
-                .eq(Leave::getId, id)
-                .eq(Leave::getStatus, "PENDING")
-                .eq(Leave::getVersion, leave.getVersion())
-        );
-
-        if (rows == 0) {
-            throw new BusinessException("数据已被其他操作修改，请刷新后重试");
-        }
+        // [A1 第二步] 委托 UniversalApprovalService 走状态机 + 乐观锁
+        universalService.fire("LEAVE", id, userId, ApprovalEvent.WITHDRAW, "申请人撤回");
 
         log.info("请假申请撤回: id={}, userId={}", id, userId);
     }
@@ -205,34 +164,15 @@ public class LeaveServiceImpl implements LeaveService {
     @Override
     @Transactional
     public void addSign(Long id, Long addUserId, Long currentApproverId) {
-        Leave leave = leaveMapper.selectById(id);
-        if (leave == null) {
-            throw new BusinessException("请假单不存在");
-        }
-
-        if (!"PENDING".equals(leave.getStatus())) {
-            throw new BusinessException("当前状态不允许加签");
-        }
-
-        // 检查循环审批：A -> B -> A
+        // [A1 第二步] 循环审批检查保留（调用方）
         if (hasCircularReference("LEAVE", id, addUserId, currentApproverId)) {
             throw new BusinessException("检测到循环审批，禁止此操作");
         }
 
-        leave.setCurrentApproverId(addUserId);
-        int rows = leaveMapper.update(
-            leave,
-            new LambdaQueryWrapper<Leave>()
-                .eq(Leave::getId, id)
-                .eq(Leave::getStatus, "PENDING")
-                .eq(Leave::getVersion, leave.getVersion())
-        );
+        // [A1 第二步] 委托 UniversalApprovalService：换审批人，不改状态
+        universalService.transfer("LEAVE", id, currentApproverId, addUserId, null, "加签给用户: " + addUserId);
 
-        if (rows == 0) {
-            throw new BusinessException("数据已被其他操作修改，请刷新后重试");
-        }
-
-        // 记录加签历史
+        // 业务副作用：记录加签历史
         ApprovalRecord record = new ApprovalRecord();
         record.setBusinessType("LEAVE");
         record.setBusinessId(id);
@@ -248,17 +188,15 @@ public class LeaveServiceImpl implements LeaveService {
     @Override
     @Transactional
     public void transfer(Long id, Long toUserId, String reason, Long currentApproverId) {
-        Leave leave = leaveMapper.selectById(id);
-        if (leave == null) {
-            throw new BusinessException("请假单不存在");
-        }
-
-        // 检查循环审批
+        // [A1 第二步] 循环审批检查保留（调用方）
         if (hasCircularReference("LEAVE", id, toUserId, currentApproverId)) {
             throw new BusinessException("检测到循环审批，禁止此操作");
         }
 
-        // 记录转交历史
+        // [A1 第二步] 委托 UniversalApprovalService：换审批人
+        universalService.transfer("LEAVE", id, currentApproverId, toUserId, null, reason);
+
+        // 业务副作用：记录转交历史
         ApprovalRecord record = new ApprovalRecord();
         record.setBusinessType("LEAVE");
         record.setBusinessId(id);
@@ -267,19 +205,6 @@ public class LeaveServiceImpl implements LeaveService {
         record.setComment("转交给用户: " + toUserId + ", 原因: " + reason);
         record.setCreateTime(LocalDateTime.now());
         approvalRecordMapper.insert(record);
-
-        leave.setCurrentApproverId(toUserId);
-        int rows = leaveMapper.update(
-            leave,
-            new LambdaQueryWrapper<Leave>()
-                .eq(Leave::getId, id)
-                .eq(Leave::getStatus, "PENDING")
-                .eq(Leave::getVersion, leave.getVersion())
-        );
-
-        if (rows == 0) {
-            throw new BusinessException("数据已被其他操作修改，请刷新后重试");
-        }
 
         log.info("请假申请转交: id={}, toUserId={}, from={}, reason={}", id, toUserId, currentApproverId, reason);
     }

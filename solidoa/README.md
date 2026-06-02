@@ -1,5 +1,8 @@
 # SolidOA 企业办公自动化系统
 
+[![Backend CI](https://github.com/GMtaozi/SolidOA/actions/workflows/backend-ci.yml/badge.svg)](https://github.com/GMtaozi/SolidOA/actions/workflows/backend-ci.yml)
+[![Frontend CI](https://github.com/GMtaozi/SolidOA/actions/workflows/frontend-ci.yml/badge.svg)](https://github.com/GMtaozi/SolidOA/actions/workflows/frontend-ci.yml)
+
 ## 项目简介
 
 SolidOA 是一套基于 Spring Cloud Alibaba 微服务架构的企业办公自动化系统，支持审批流程、协作办公、财务管理、考勤管理、文件管理和钉钉集成等功能。系统采用前后端分离架构，移动端支持 UniApp。

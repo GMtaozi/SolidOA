@@ -1,0 +1,69 @@
+// ============================================================================
+// Element Plus 主题覆盖 — 把 EP 默认 #409eff 替换为设计系统 #60A5FA
+// 同时调整圆角到 DESIGN.md 规范
+// ============================================================================
+:root {
+  /* 主色 (Primary) */
+  --el-color-primary: #60A5FA;
+  --el-color-primary-light-3: #93C5FD;
+  --el-color-primary-light-5: #BFDBFE;
+  --el-color-primary-light-7: #DBEAFE;
+  --el-color-primary-light-8: rgba(96, 165, 250, 0.15);
+  --el-color-primary-light-9: rgba(96, 165, 250, 0.08);
+  --el-color-primary-dark-2: #3B82F6;
+
+  /* 状态色 */
+  --el-color-success: #34D399;
+  --el-color-success-light-3: #6EE7B7;
+  --el-color-success-light-5: #A7F3D0;
+  --el-color-success-light-7: #D1FAE5;
+  --el-color-success-light-8: rgba(52, 211, 153, 0.15);
+  --el-color-success-light-9: rgba(52, 211, 153, 0.08);
+  --el-color-success-dark-2: #2E8B57;
+
+  --el-color-warning: #FBBF24;
+  --el-color-warning-light-3: #FCD34D;
+  --el-color-warning-light-5: #FDE68A;
+  --el-color-warning-light-7: #FEF3C7;
+  --el-color-warning-light-8: rgba(251, 191, 36, 0.15);
+  --el-color-warning-light-9: rgba(251, 191, 36, 0.08);
+  --el-color-warning-dark-2: #D97706;
+
+  --el-color-danger: #FCA5A5;
+  --el-color-danger-light-3: #FECACA;
+  --el-color-danger-light-5: #FEE2E2;
+  --el-color-danger-light-7: #FEE2E2;
+  --el-color-danger-light-8: rgba(252, 165, 165, 0.15);
+  --el-color-danger-light-9: rgba(252, 165, 165, 0.08);
+  --el-color-danger-dark-2: #DC2626;
+
+  --el-color-info: #94A3B8;
+
+  /* 圆角（DESIGN.md: input 8 / button 12 / card 16） */
+  --el-border-radius-small: 8px;
+  --el-border-radius-base: 12px;
+  --el-border-radius-round: 40px;
+
+  /* 文字 */
+  --el-text-color-primary: #3B3B3B;
+  --el-text-color-regular: #6B7280;
+  --el-text-color-secondary: #9CA3AF;
+  --el-text-color-placeholder: #c0c4cc;
+
+  /* 边框 */
+  --el-border-color: #F0EDE9;
+  --el-border-color-light: #F0EDE9;
+  --el-border-color-lighter: #E5E7EB;
+  --el-border-color-extra-light: #F5F5F5;
+  --el-border-color-dark: #dcdfe6;
+
+  /* 背景 */
+  --el-bg-color: #ffffff;
+  --el-bg-color-page: #f7f5f2;
+  --el-fill-color: #f9f9f9;
+  --el-fill-color-light: #fafafa;
+  --el-fill-color-blank: #ffffff;
+
+  /* 字体 */
+  --el-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
