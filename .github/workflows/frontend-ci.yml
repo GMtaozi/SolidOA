@@ -52,7 +52,20 @@ jobs:
 
       - name: 闸 4 - 生产构建
         working-directory: solidoa-web
-        run: npm run build
+        run: npm run build 2>&1 | tee /tmp/build.log
+        continue-on-error: true
+
+      - name: 闸 4 - 输出构建日志
+        if: failure()
+        working-directory: solidoa-web
+        run: |
+          echo "===== BUILD LOG TAIL (last 200 lines) ====="
+          tail -n 200 /tmp/build.log 2>/dev/null || echo "no log"
+          echo "===== ENV DEBUG ====="
+          node -v
+          npm -v
+          pwd
+          ls -la
 
       - name: 全部通过
         if: success()
