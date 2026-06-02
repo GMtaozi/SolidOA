@@ -10,8 +10,17 @@ import OaStatusBadge from './OaStatusBadge/index.vue'
 import OaTable from './OaTable/index.vue'
 import OaApprovalCard from './OaApprovalCard/index.vue'
 import OaApprovalFlow from './OaApprovalFlow/index.vue'
+import OaEmpty from './OaEmpty/index.vue'
+import OaPagination from './OaPagination/index.vue'
+import OaSearchForm from './OaSearchForm/index.vue'
+import OaPageHeader from './OaPageHeader/index.vue'
+import OaIcon from './OaIcon/index.vue'
 
-const components = [OaButton, OaCard, OaDialog, OaFormDialog, OaStatusBadge, OaTable, OaApprovalCard, OaApprovalFlow]
+const components = [
+  OaButton, OaCard, OaDialog, OaFormDialog, OaStatusBadge, OaTable,
+  OaApprovalCard, OaApprovalFlow, OaEmpty, OaPagination,
+  OaSearchForm, OaPageHeader, OaIcon
+]
 
 export {
   OaButton,
@@ -21,7 +30,12 @@ export {
   OaStatusBadge,
   OaTable,
   OaApprovalCard,
-  OaApprovalFlow
+  OaApprovalFlow,
+  OaEmpty,
+  OaPagination,
+  OaSearchForm,
+  OaPageHeader,
+  OaIcon
 }
 
 /** Vue 插件安装方式（自动注册所有 OaXxx 为全局组件） */

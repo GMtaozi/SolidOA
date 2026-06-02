@@ -10,6 +10,8 @@ import com.solidoa.system.vo.ScheduleVO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -75,6 +77,7 @@ public class ScheduleServiceImpl implements ScheduleService {
     }
 
     @Override
+    @Cacheable(value = "oa:schedule", key = "#userId + ':' + #startDate + ':' + #endDate", unless = "#result == null")
     public List<ScheduleVO> listByDateRange(LocalDateTime startDate, LocalDateTime endDate, Long userId) {
         List<Schedule> list = scheduleMapper.selectByUserIdAndDateRange(userId, startDate, endDate);
         return list.stream().map(s -> {

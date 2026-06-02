@@ -183,6 +183,28 @@ public class ApprovalController {
     }
 
     /**
+     * 8.5 时间线 (V2.0 6.1.2) - 审批历史 + 当前节点, 供前端 OaApprovalFlow / 时间轴组件
+     * 与 flow-graph 的区别: timeline 是顺序时间线, flow-graph 是节点拓扑图
+     */
+    @GetMapping("/approval/{type}/{id}/timeline")
+    @Operation(summary = "获取审批时间线（审批历史 + 当前节点）")
+    public Result<java.util.Map<String, Object>> getTimeline(
+            @PathVariable("type") String businessType,
+            @PathVariable("id") Long businessId) {
+        FlowGraphVO flow = flowGraphService.getFlowGraph(businessType, businessId);
+        java.util.Map<String, Object> timeline = new java.util.LinkedHashMap<>();
+        timeline.put("businessType", businessType);
+        timeline.put("businessId", businessId);
+        timeline.put("currentState", flow.getCurrentState());
+        timeline.put("currentNodeOrder", flow.getCurrentNodeOrder());
+        // nodes 已按 order 排序, 直接作为时间线使用
+        timeline.put("items", flow.getNodes());
+        timeline.put("totalNodes", flow.getTotalNodes());
+        timeline.put("completedNodes", flow.getCompletedNodes());
+        return Result.success(timeline);
+    }
+
+    /**
      * 9. 初始化业务审批节点（Sprint 3.4 修复：供 hr 端 Feign 远程调用）
      * hr 端业务（OVERTIME/BUSINESS_TRIP/REPAIR_CARD/GO_OUT/EXPENSE）创建后
      * 调此端点把节点写一份到 oa_workflow.oa_approval_node

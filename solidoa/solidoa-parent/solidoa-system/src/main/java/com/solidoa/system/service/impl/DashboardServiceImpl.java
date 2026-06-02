@@ -8,6 +8,7 @@ import com.solidoa.system.mapper.UserMapper;
 import com.solidoa.system.service.DashboardService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -28,6 +29,7 @@ public class DashboardServiceImpl implements DashboardService {
     private final UserMapper userMapper;
 
     @Override
+    @Cacheable(value = "oa:dashboard", key = "'stats:' + #userId", unless = "#result == null")
     public Map<String, Object> getDashboardStats(Long userId) {
         Map<String, Object> stats = new LinkedHashMap<>();
 
