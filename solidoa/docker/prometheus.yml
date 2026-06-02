@@ -1,0 +1,38 @@
+# Prometheus 监控配置 (V2.0 15.2.2)
+# 抓取 SolidOA 各微服务的 /actuator/prometheus 端点
+# Spring Boot 启动时需在 application.yml 暴露 prometheus 端点
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  # Prometheus 自身
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # SolidOA 各服务
+  - job_name: 'solidoa-gateway'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['host.docker.internal:8080']
+        labels: { application: 'solidoa-gateway' }
+
+  - job_name: 'solidoa-system'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['host.docker.internal:8081']
+        labels: { application: 'solidoa-system' }
+
+  - job_name: 'solidoa-workflow'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['host.docker.internal:8082']
+        labels: { application: 'solidoa-workflow' }
+
+  - job_name: 'solidoa-hr'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['host.docker.internal:8085']
+        labels: { application: 'solidoa-hr' }

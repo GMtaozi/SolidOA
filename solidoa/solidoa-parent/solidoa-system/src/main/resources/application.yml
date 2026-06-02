@@ -56,3 +56,20 @@ feign:
 # 用户服务配置
 user:
   default-password: ${USER_DEFAULT_PASSWORD:Solidoa@2026}
+
+# Spring Boot Actuator + Prometheus (V2.0 15.2.2)
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    tags:
+      application: ${spring.application.name}
+  prometheus:
+    metrics:
+      export:
+        enabled: true

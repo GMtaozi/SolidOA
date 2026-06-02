@@ -11,6 +11,8 @@ import com.solidoa.system.vo.ContactVO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -82,6 +84,7 @@ public class ContactServiceImpl implements ContactService {
     }
 
     @Override
+    @Cacheable(value = "oa:contact", key = "#deptId", unless = "#result == null")
     public List<ContactVO> listByDeptId(Long deptId) {
         List<Contact> list = contactMapper.selectByDeptId(deptId);
         return list.stream().map(c -> {
